@@ -8,6 +8,9 @@ import { buildRequestDetail, extractRequestConfig, saveUsageStats, formatDoneLin
 // Responses-API providers (e.g. codex) may emit SSE without content-type + use Responses output shape
 const isResponsesProvider = (p) => PROVIDERS[p]?.format === FORMATS.OPENAI_RESPONSES;
 import { saveRequestDetail, appendRequestLog } from "@/lib/usageDb.js";
+import { isContentBlockProvider, findContentBlock } from "../../utils/contentBlock.js";
+
+const CONTENT_BLOCK_ERROR = "Upstream content filter blocked this request (sensitive content)";
 
 function textFromResponsesMessageItem(item) {
   if (!item?.content || !Array.isArray(item.content)) return "";
@@ -134,6 +137,9 @@ export async function handleForcedSSEToJson({ providerResponse, sourceFormat, pr
       if (log?.line) log.line(reqTag, "📊", formatDoneLine({ usage, latency: { total: Date.now() - requestStartTime } }));
 
       const { msgItem, textContent } = pickAssistantMessageForChatCompletion(jsonResponse.output);
+      if (isContentBlockProvider(provider) && findContentBlock(textContent)) {
+        return createErrorResult(HTTP_STATUS.BAD_REQUEST, CONTENT_BLOCK_ERROR);
+      }
       const totalLatency = Date.now() - requestStartTime;
 
       saveRequestDetail(buildRequestDetail({
@@ -207,6 +213,9 @@ export async function handleForcedSSEToJson({ providerResponse, sourceFormat, pr
         HTTP_STATUS.BAD_GATEWAY,
         parsed.error.message || "Upstream SSE stream failed"
       );
+    }
+    if (isContentBlockProvider(provider) && findContentBlock(parsed?.choices?.[0]?.message?.content || "")) {
+      return createErrorResult(HTTP_STATUS.BAD_REQUEST, CONTENT_BLOCK_ERROR);
     }
 
     if (onRequestSuccess) await onRequestSuccess();

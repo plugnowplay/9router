@@ -5,6 +5,7 @@ import { extractUsage, mergeUsage, hasValidUsage, estimateUsage, logUsage, addBu
 import { parseSSELine, hasValuableContent, fixInvalidId, formatSSE } from "./streamHelpers.js";
 import { getOpenAIResponsesEventName, isOpenAIResponsesTerminalEvent, formatIncompleteOpenAIResponsesStreamFailure } from "./responsesStreamHelpers.js";
 import { dbg, isDebugEnabled } from "./debugLog.js";
+import { isContentBlockProvider, findContentBlock } from "./contentBlock.js";
 
 import { SSE_DONE, SSE_HEADERS, SSE_HEADERS_NO_BUFFER } from "./sseConstants.js";
 
@@ -160,6 +161,15 @@ export function createSSEStream(options = {}) {
                 accumulatedThinking += reasoning;
               }
 
+              // Soft-block: provider 200s with block text as content → error chunk (AI SDK throws on it) + abort pipe so clients fail over
+              if (isContentBlockProvider(provider) && findContentBlock(accumulatedContent)) {
+                const errChunk = `data: ${JSON.stringify({ error: { message: "Upstream content filter blocked this request (sensitive content)" } })}\n\n`;
+                reqLogger?.appendConvertedChunk?.(errChunk);
+                controller.enqueue(sharedEncoder.encode(errChunk));
+                controller.error(new Error("upstream content filter: request blocked (sensitive content)"));
+                return;
+              }
+
               const extracted = extractUsage(parsed);
               if (extracted) {
                 usage = mergeUsage(usage, extracted);
@@ -276,6 +286,15 @@ export function createSSEStream(options = {}) {
               }
             }
           }
+        }
+
+        // Soft-block: provider 200s with block text as content → error chunk + abort pipe so clients fail over
+        if (isContentBlockProvider(provider) && findContentBlock(accumulatedContent)) {
+          const errChunk = `data: ${JSON.stringify({ error: { message: "Upstream content filter blocked this request (sensitive content)" } })}\n\n`;
+          reqLogger?.appendConvertedChunk?.(errChunk);
+          controller.enqueue(sharedEncoder.encode(errChunk));
+          controller.error(new Error("upstream content filter: request blocked (sensitive content)"));
+          return;
         }
 
         // Extract usage

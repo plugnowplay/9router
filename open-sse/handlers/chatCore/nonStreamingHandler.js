@@ -9,6 +9,7 @@ import { parseSSEToOpenAIResponse } from "./sseToJsonHandler.js";
 import { buildRequestDetail, extractRequestConfig, extractUsageFromResponse, saveUsageStats, formatDoneLine } from "./requestDetail.js";
 import { appendRequestLog, saveRequestDetail } from "@/lib/usageDb.js";
 import { decloakToolNames } from "../../utils/claudeCloaking.js";
+import { isContentBlockProvider, findContentBlock } from "../../utils/contentBlock.js";
 
 function parseToolArguments(value) {
   if (!value) return {};
@@ -219,6 +220,17 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
       console.error(`[ChatCore] Failed to parse JSON from ${provider}:`, err.message);
       return createErrorResult(HTTP_STATUS.BAD_GATEWAY, `Invalid JSON response from ${provider}`);
     }
+  }
+
+  const contentText =
+    typeof responseBody?.choices?.[0]?.message?.content === "string"
+      ? responseBody.choices[0].message.content
+      : typeof responseBody?.content === "string"
+        ? responseBody.content
+        : "";
+  if (isContentBlockProvider(provider) && findContentBlock(contentText)) {
+    appendLog({ status: `FAILED ${HTTP_STATUS.BAD_REQUEST}` });
+    return createErrorResult(HTTP_STATUS.BAD_REQUEST, "Upstream content filter blocked this request (sensitive content)");
   }
 
   reqLogger.logProviderResponse(providerResponse.status, providerResponse.statusText, providerResponse.headers, responseBody);
