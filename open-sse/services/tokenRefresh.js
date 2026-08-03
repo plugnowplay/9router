@@ -57,6 +57,10 @@ export function getRefreshLeadMs(provider) {
   if (REFRESH_LEAD_MS[provider]) return REFRESH_LEAD_MS[provider];
   // Legacy id after kimi-coding → kimi merge
   if (provider === "kimi-coding" && REFRESH_LEAD_MS.kimi) return REFRESH_LEAD_MS.kimi;
+  // grok-cli aliases (gcli / grok-build) share the canonical provider's lead
+  if ((provider === "gcli" || provider === "grok-build") && REFRESH_LEAD_MS["grok-cli"]) {
+    return REFRESH_LEAD_MS["grok-cli"];
+  }
   return TOKEN_EXPIRY_BUFFER_MS;
 }
 

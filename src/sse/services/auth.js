@@ -1,7 +1,7 @@
-import { getProviderConnections, validateApiKey, updateProviderConnection, getSettings, getProxyPools } from "@/lib/localDb";
+import { getProviderConnections, validateApiKey, updateProviderConnection, deleteProviderConnection, getSettings, getProxyPools } from "@/lib/localDb";
 import { resolveConnectionProxyConfig, pickProxyPoolId } from "@/lib/network/connectionProxy";
 import { formatRetryAfter, checkFallbackError, isModelLockActive, buildModelLockUpdate, getEarliestModelLockUntil } from "open-sse/services/accountFallback.js";
-import { MAX_RATE_LIMIT_COOLDOWN_MS } from "open-sse/config/errorConfig.js";
+import { MAX_RATE_LIMIT_COOLDOWN_MS, PROVIDER_ERROR_RULES } from "open-sse/config/errorConfig.js";
 import { resolveProviderId, FREE_PROVIDERS } from "@/shared/constants/providers.js";
 import * as log from "../utils/logger.js";
 
@@ -226,9 +226,22 @@ export async function markAccountUnavailable(connectionId, status, errorText, pr
 
   const reason = typeof errorText === "string" ? errorText.slice(0, 100) : "Provider error";
   const lockUpdate = buildModelLockUpdate(model, cooldownMs);
+  const connName = conn?.displayName || conn?.name || conn?.email || connectionId.slice(0, 8);
+
+  // Provider error rules (e.g. grok-cli): 429/401 → disable account, 402/403 → delete it
+  const ruleAction = PROVIDER_ERROR_RULES?.[provider]?.[status];
+  if (ruleAction === "delete") {
+    await deleteProviderConnection(connectionId);
+    log.warn("AUTH", `${connName} DELETED (rule ${status})`);
+    if (provider && status && reason) {
+      console.error(`❌ ${provider} [${status}]: ${reason}`);
+    }
+    return { shouldFallback: true, cooldownMs };
+  }
 
   await updateProviderConnection(connectionId, {
     ...lockUpdate,
+    ...(ruleAction === "disable" ? { isActive: false } : {}),
     testStatus: "unavailable",
     lastError: reason,
     errorCode: status,
@@ -237,8 +250,11 @@ export async function markAccountUnavailable(connectionId, status, errorText, pr
   });
 
   const lockKey = Object.keys(lockUpdate)[0];
-  const connName = conn?.displayName || conn?.name || conn?.email || connectionId.slice(0, 8);
-  log.warn("AUTH", `${connName} locked ${lockKey} for ${Math.round(cooldownMs / 1000)}s [${status}]`);
+  if (ruleAction === "disable") {
+    log.warn("AUTH", `${connName} DISABLED (rule ${status})`);
+  } else {
+    log.warn("AUTH", `${connName} locked ${lockKey} for ${Math.round(cooldownMs / 1000)}s [${status}]`);
+  }
 
   if (provider && status && reason) {
     console.error(`❌ ${provider} [${status}]: ${reason}`);

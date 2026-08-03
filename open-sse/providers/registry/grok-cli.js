@@ -91,6 +91,6 @@ export default {
     scope:
       "openid profile email offline_access grok-cli:access api:access conversations:read conversations:write",
     referrer: "grok-build",
-    refreshLeadMs: 5 * 60 * 1000,
+    refreshLeadMs: 3 * 60 * 60 * 1000,
   },
 };

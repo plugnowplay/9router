@@ -61,6 +61,7 @@ export const ERROR_RULES = [
   { text: "no credentials",           cooldownMs: COOLDOWN.long },
   { text: "request not allowed",      cooldownMs: COOLDOWN.short },
   { text: "improperly formed request", cooldownMs: COOLDOWN.long },
+  { text: "sensitive content",        cooldownMs: COOLDOWN.short },
   { text: "rate limit",               backoff: true },
   { text: "too many requests",        backoff: true },
   { text: "quota exceeded",           backoff: true },
@@ -82,4 +83,12 @@ export const COOLDOWN_MS = {
   notFound: COOLDOWN.long,
   transient: TRANSIENT_COOLDOWN_MS,
   requestNotAllowed: COOLDOWN.short,
+};
+
+// Provider-specific account lifecycle rules on upstream request errors.
+//   "disable" → keep the row but set isActive=false (stop routing to it)
+//   "delete"  → remove the connection entirely
+export const PROVIDER_ERROR_RULES = {
+  "grok-cli": { 401: "disable", 429: "disable", 402: "delete", 403: "delete" },
+  gcli: { 401: "disable", 429: "disable", 402: "delete", 403: "delete" },
 };
