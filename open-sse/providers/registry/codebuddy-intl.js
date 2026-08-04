@@ -26,10 +26,9 @@ export default {
     // CodeBuddy intl speaks the same unified OpenAI reasoning_effort shape as CN.
     thinkingFormat: "openai",
     headers: {
-      "User-Agent": "IDE/2.108.1 CodeBuddy/2.108.1",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
       "X-Product": "SaaS",
-      "X-IDE-Type": "IDE",
-      "X-IDE-Name": "IDE",
+      "X-Domain": "www.codebuddy.ai",
       "x-requested-with": "XMLHttpRequest",
       "x-codebuddy-request": "1",
     },
