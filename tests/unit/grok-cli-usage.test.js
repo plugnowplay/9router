@@ -167,6 +167,24 @@ describe("parseGrokCliBilling", () => {
       resetAt: "2026-08-01T00:00:00.000Z",
     });
   });
+
+  it("maps monthlyLimit with 'used' field (live grok2api response shape)", () => {
+    const parsed = parseGrokCliBilling({
+      config: {
+        monthlyLimit: { val: 500000 },
+        used: { val: 537365 },
+        onDemandCap: { val: 0 },
+        onDemandUsed: { val: 0 },
+        billingPeriodStart: "2026-07-01T00:00:00+00:00",
+        billingPeriodEnd: "2026-08-01T00:00:00+00:00",
+      },
+    }, { subscriptionTier: "supergrok" });
+    expect(parsed.quotas["Monthly included"]).toMatchObject({
+      used: 537365,
+      total: 500000,
+    });
+    expect(parsed.quotas["Monthly included"].remainingPercentage).toBeLessThanOrEqual(1);
+  });
 });
 
 function encodeVarint(value) {

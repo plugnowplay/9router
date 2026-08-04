@@ -147,7 +147,8 @@ export function parseGrokCliBilling(billing, user = null) {
     NaN,
   );
   const includedUsed = unwrapVal(
-    config.includedUsed ?? config.included_used ?? root.includedUsed ?? root.included_used,
+    config.includedUsed ?? config.included_used ?? root.includedUsed ?? root.included_used ??
+    config.used ?? root.used ?? config.totalUsed ?? root.totalUsed,
     NaN,
   );
   const totalUsed = unwrapVal(
