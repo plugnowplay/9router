@@ -58,6 +58,9 @@ export class BaseExecutor {
       if (!headers["anthropic-version"]) {
         headers["anthropic-version"] = ANTHROPIC_API_VERSION;
       }
+      if (!headers["user-agent"] && !headers["User-Agent"]) {
+        headers["user-agent"] = "claude-cli/1.0.86 (external, cli)";
+      }
     } else {
       // Standard Bearer token auth for other providers
       if (credentials.accessToken) {
