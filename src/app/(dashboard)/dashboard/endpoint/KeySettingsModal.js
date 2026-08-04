@@ -22,6 +22,7 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
   const [error, setError] = useState("");
   const [copiedShare, setCopiedShare] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [isShared, setIsShared] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !apiKey) return;
@@ -29,6 +30,7 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
     setTokenQuota(apiKey.tokenQuota == null ? "" : String(apiKey.tokenQuota));
     setExpiresAt(toLocalInput(apiKey.expiresAt));
     setModelsText(Array.isArray(apiKey.modelWhitelist) ? apiKey.modelWhitelist.join("\n") : "");
+    setIsShared(apiKey.isPublic === true);
     setError("");
   }, [isOpen, apiKey]);
 
@@ -70,13 +72,14 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
     setError("");
     setToggling(true);
     try {
-      const method = apiKey.isPublic ? "DELETE" : "POST";
+      const method = isShared ? "DELETE" : "POST";
       const res = await fetch("/api/keys/" + apiKey.id + "/share", { method });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError(data.error || "Failed to toggle share");
         return;
       }
+      setIsShared(!isShared);
       if (onSaved) onSaved();
     } catch (e) {
       setError(e.message);
@@ -129,7 +132,7 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
 
         <div className="flex flex-col gap-2 pt-3 border-t border-border">
           <label className="text-sm font-medium">Shared at root URL</label>
-          {apiKey.isPublic ? (
+          {isShared ? (
             <div className="flex items-center gap-2">
               <span className="text-xs text-green-600 dark:text-green-400 flex-1">
                 {typeof window !== "undefined" ? window.location.origin : "your-domain"}
