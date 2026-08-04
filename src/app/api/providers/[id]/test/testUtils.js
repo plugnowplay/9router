@@ -93,6 +93,7 @@ const OAUTH_TEST_CONFIG = {
     authPrefix: "Bearer ",
   },
   "codebuddy-cn": { tokenExists: true },
+  "codebuddy-intl": { tokenExists: true },
   kimchi: {
     url: KIMCHI_CONFIG.validationUrl || "https://api.cast.ai/v1/llm/openai/supported-providers",
     method: "GET",
@@ -528,6 +529,22 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
 
   try {
     switch (connection.provider) {
+      case "codebuddy-cn":
+      case "codebuddy-intl": {
+        const usageUrl = PROVIDERS[connection.provider]?.transport?.usage?.url;
+        if (!usageUrl) return { valid: false, error: "Missing usage endpoint" };
+        const res = await fetchWithConnectionProxy(usageUrl, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${connection.apiKey}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: "{}",
+        }, effectiveProxy);
+        const valid = res.status !== 401 && res.status !== 403;
+        return { valid, error: valid ? null : "Invalid API key" };
+      }
       case "cloudflare-ai": {
         const psd = connection.providerSpecificData || {};
         const accountId = psd.accountId;
