@@ -198,11 +198,19 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
     return errorResponse(HTTP_STATUS.BAD_REQUEST, "Invalid model format");
   }
 
-  const { provider, model } = modelInfo;
+  const { provider, model, providerAlias } = modelInfo;
 
-  // Whitelist is enforced against the RESOLVED provider/model.
+  // Whitelist is enforced against the RESOLVED provider/model, but custom
+  // provider nodes use an alias (e.g. "zend") that resolves to a node ID.
+  // Check both forms so a whitelist saved with the alias still matches.
   if (apiKey) {
-    const modelLimits = await checkKeyLimits({ apiKey, model: `${provider}/${model}` });
+    const candidate = providerAlias && providerAlias !== provider
+      ? `${providerAlias}/${model}`
+      : null;
+    let modelLimits = await checkKeyLimits({ apiKey, model: `${provider}/${model}` });
+    if (!modelLimits.ok && candidate) {
+      modelLimits = await checkKeyLimits({ apiKey, model: candidate });
+    }
     if (!modelLimits.ok) {
       log.warn("AUTH", `Key limit: ${modelLimits.error}`);
       return errorResponse(modelLimits.status, modelLimits.error);
