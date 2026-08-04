@@ -1,0 +1,36 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e3]:
+    - generic [ref=f1e4]:
+      - generic [ref=f1e5]:
+        - heading "public" [level=1] [ref=f1e6]
+        - paragraph [ref=f1e7]: Use this base URL and key with any OpenAI-compatible client.
+      - generic [ref=f1e8]:
+        - paragraph [ref=f1e9]: Expires
+        - paragraph [ref=f1e10]: 01/09/2026
+    - generic [ref=f1e11]:
+      - generic [ref=f1e12]: Base URL
+      - generic [ref=f1e13]:
+        - textbox [ref=f1e16]: http://localhost:20127/v1
+        - button "content_copy Copy" [ref=f1e17] [cursor=pointer]:
+          - generic [ref=f1e18]: content_copy
+          - text: Copy
+    - generic [ref=f1e19]:
+      - generic [ref=f1e20]: API Key
+      - generic [ref=f1e21]:
+        - textbox [ref=f1e24]: sk-b7ffd3e6cddb6e50-2sjwdv-ad11e840
+        - button "content_copy Copy" [ref=f1e25] [cursor=pointer]:
+          - generic [ref=f1e26]: content_copy
+          - text: Copy
+    - generic [ref=f1e27]:
+      - generic [ref=f1e28]: Allowed models
+      - generic [ref=f1e29]:
+        - generic [ref=f1e30]: glm/glm-5.2
+        - generic [ref=f1e31]: cc/claude-opus-4-7
+    - generic [ref=f1e32]:
+      - generic [ref=f1e34]:
+        - generic [ref=f1e35]: Token quota
+        - generic [ref=f1e36]: 75.000 / 100.000 (75%)
+      - generic [ref=f1e39]:
+        - generic [ref=f1e40]: Rate limit
+        - generic [ref=f1e41]: 60 req/min
+  - alert [ref=f1e42]

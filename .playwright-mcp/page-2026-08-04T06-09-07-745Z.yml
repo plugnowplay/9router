@@ -1,0 +1,30 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e5]:
+      - heading "public" [level=1] [ref=e6]
+      - paragraph [ref=e7]: Use this base URL and key with any OpenAI-compatible client.
+    - generic [ref=e8]:
+      - generic [ref=e9]: Base URL
+      - generic [ref=e10]:
+        - textbox [ref=e13]: http://localhost:20127/v1
+        - button "content_copy Copy" [ref=e14] [cursor=pointer]:
+          - generic [ref=e15]: content_copy
+          - text: Copy
+    - generic [ref=e16]:
+      - generic [ref=e17]: API Key
+      - generic [ref=e18]:
+        - textbox [ref=e21]: sk-b7ffd3e6cddb6e50-2sjwdv-ad11e840
+        - button "content_copy Copy" [ref=e22] [cursor=pointer]:
+          - generic [ref=e23]: content_copy
+          - text: Copy
+    - generic [ref=e24]:
+      - generic [ref=e25]: Allowed models
+      - paragraph [ref=e26]: All models
+    - generic [ref=e27]:
+      - generic [ref=e29]:
+        - generic [ref=e30]: Token quota
+        - generic [ref=e31]: 75.000 / 100.000 (75%)
+      - generic [ref=e34]:
+        - generic [ref=e35]: Rate limit
+        - generic [ref=e36]: 60 req/min
+  - alert [ref=e37]

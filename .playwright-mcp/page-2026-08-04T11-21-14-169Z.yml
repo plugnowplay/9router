@@ -1,0 +1,82 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e4]:
+      - link "hub 9Router Proxy v0.5.45" [ref=e10] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [ref=e11]: hub
+        - generic [ref=e13]:
+          - heading "9Router Proxy" [level=1] [ref=e14]
+          - generic [ref=e15]: v0.5.45
+      - navigation [ref=e16]:
+        - link "api Endpoint & Key" [ref=e17] [cursor=pointer]:
+          - /url: /dashboard/endpoint
+          - generic [ref=e18]: api
+          - generic [ref=e19]: Endpoint & Key
+        - link "dns Providers" [ref=e20] [cursor=pointer]:
+          - /url: /dashboard/providers
+          - generic [ref=e21]: dns
+          - generic [ref=e22]: Providers
+        - link "layers Combos" [ref=e23] [cursor=pointer]:
+          - /url: /dashboard/combos
+          - generic [ref=e24]: layers
+          - generic [ref=e25]: Combos
+        - link "bar_chart Usage" [ref=e26] [cursor=pointer]:
+          - /url: /dashboard/usage
+          - generic [ref=e27]: bar_chart
+          - generic [ref=e28]: Usage
+        - link "data_usage Quota Tracker" [ref=e29] [cursor=pointer]:
+          - /url: /dashboard/quota
+          - generic [ref=e30]: data_usage
+          - generic [ref=e31]: Quota Tracker
+        - link "savings Token Saver" [ref=e32] [cursor=pointer]:
+          - /url: /dashboard/token-saver
+          - generic [ref=e33]: savings
+          - generic [ref=e34]: Token Saver
+        - link "terminal CLI Tools" [ref=e35] [cursor=pointer]:
+          - /url: /dashboard/cli-tools
+          - generic [ref=e36]: terminal
+          - generic [ref=e37]: CLI Tools
+        - generic [ref=e38]:
+          - paragraph [ref=e39]: System
+          - button "perm_media Media Providers expand_more" [ref=e40] [cursor=pointer]:
+            - generic [ref=e41]: perm_media
+            - generic [ref=e42]: Media Providers
+            - generic [ref=e43]: expand_more
+          - link "lan Proxy Pools" [ref=e44] [cursor=pointer]:
+            - /url: /dashboard/proxy-pools
+            - generic [ref=e45]: lan
+            - generic [ref=e46]: Proxy Pools
+          - link "extension Skills" [ref=e47] [cursor=pointer]:
+            - /url: /dashboard/skills
+            - generic [ref=e48]: extension
+            - generic [ref=e49]: Skills
+          - link "terminal Console Log" [ref=e50] [cursor=pointer]:
+            - /url: /dashboard/console-log
+            - generic [ref=e51]: terminal
+            - generic [ref=e52]: Console Log
+          - button "computer 9Remote" [ref=e53] [cursor=pointer]:
+            - generic [ref=e54]: computer
+            - generic [ref=e55]: 9Remote
+          - link "translate 9English" [ref=e56] [cursor=pointer]:
+            - /url: https://9english.net/
+            - generic [ref=e57]: translate
+            - generic [ref=e58]: 9English
+          - link "settings Settings" [ref=e59] [cursor=pointer]:
+            - /url: /dashboard/profile
+            - generic [ref=e60]: settings
+            - generic [ref=e61]: Settings
+    - main [ref=e62]:
+      - generic [ref=e63]:
+        - generic [ref=e65]:
+          - generic [ref=e66]:
+            - generic [ref=e67]: api
+            - heading "Endpoint" [level=1] [ref=e68]
+          - paragraph [ref=e69]: API endpoint configuration
+        - generic [ref=e70]:
+          - button "Donate" [ref=e71] [cursor=pointer]:
+            - generic [ref=e72]: volunteer_activism
+          - button "Switch to dark mode" [ref=e74] [cursor=pointer]:
+            - generic [ref=e75]: dark_mode
+          - button "🇺🇸" [ref=e76] [cursor=pointer]
+          - button "grid_view" [ref=e79] [cursor=pointer]
+  - alert [ref=e96]

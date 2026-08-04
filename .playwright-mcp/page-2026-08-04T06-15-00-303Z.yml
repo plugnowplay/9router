@@ -1,0 +1,42 @@
+- generic [active] [ref=f3e1]:
+  - generic [ref=f3e3]:
+    - generic [ref=f3e4]:
+      - generic [ref=f3e5]: key
+      - generic [ref=f3e7]:
+        - heading "public" [level=1] [ref=f3e8]
+        - paragraph [ref=f3e9]: OpenAI-compatible endpoint
+      - generic [ref=f3e11]:
+        - generic [ref=f3e12]: schedule
+        - text: 01/09/2026
+    - generic [ref=f3e13]:
+      - generic [ref=f3e14]:
+        - generic [ref=f3e15]: Base URL
+        - generic [ref=f3e16]:
+          - textbox [ref=f3e19]: http://localhost:20127/v1
+          - button "content_copy Copy" [ref=f3e20] [cursor=pointer]:
+            - generic [ref=f3e21]: content_copy
+            - text: Copy
+      - generic [ref=f3e22]:
+        - generic [ref=f3e23]: API Key
+        - generic [ref=f3e24]:
+          - textbox [ref=f3e27]: sk-b7ffd3e6cddb6e50-2sjwdv-ad11e840
+          - button "content_copy Copy" [ref=f3e28] [cursor=pointer]:
+            - generic [ref=f3e29]: content_copy
+            - text: Copy
+    - generic [ref=f3e30]:
+      - generic [ref=f3e31]: Allowed models
+      - generic [ref=f3e32]:
+        - generic [ref=f3e33]: glm/glm-5.2
+        - generic [ref=f3e34]: cc/claude-opus-4-7
+    - generic [ref=f3e35]:
+      - generic [ref=f3e36]:
+        - generic [ref=f3e37]:
+          - generic [ref=f3e38]: Token quota
+          - generic [ref=f3e39]: 75.000 / 100.000
+        - generic [ref=f3e42]:
+          - generic [ref=f3e43]: 75% used
+          - generic [ref=f3e44]: Monthly reset
+      - generic [ref=f3e45]:
+        - generic [ref=f3e46]: Rate limit
+        - generic [ref=f3e47]: 60 req/min
+  - alert [ref=f3e48]

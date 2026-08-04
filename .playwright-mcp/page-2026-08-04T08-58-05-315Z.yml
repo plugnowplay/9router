@@ -1,0 +1,51 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: bolt
+      - generic [ref=e8]:
+        - generic [ref=e9]:
+          - heading "public" [level=1] [ref=e10]
+          - generic [ref=e11]: Active
+        - paragraph [ref=e13]: OpenAI-compatible endpoint
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - generic [ref=e17]: Base URL
+          - button "http://localhost:20127/v1 content_copy" [ref=e18] [cursor=pointer]:
+            - generic [ref=e19]: http://localhost:20127/v1
+            - generic [ref=e20]: content_copy
+        - generic [ref=e21]:
+          - generic [ref=e22]: API Key
+          - button "sk-b7ffd3e6cddb6e50-2sjwdv-ad11e840 content_copy" [ref=e23] [cursor=pointer]:
+            - generic [ref=e24]: sk-b7ffd3e6cddb6e50-2sjwdv-ad11e840
+            - generic [ref=e25]: content_copy
+      - generic [ref=e26]:
+        - generic [ref=e27]: Allowed models
+        - generic [ref=e28]:
+          - generic [ref=e29]: cbcn/glm-5.2
+          - generic [ref=e30]: aimiot
+      - generic [ref=e31]:
+        - generic [ref=e32]:
+          - generic [ref=e33]: Token quota
+          - generic [ref=e34]:
+            - generic [ref=e35]: 42%
+            - generic [ref=e36]: 42.000 / 100.000
+        - generic [ref=e39]:
+          - generic [ref=e40]: 58.000 tokens remaining
+          - generic [ref=e41]: Monthly reset
+      - generic [ref=e43]:
+        - generic [ref=e44]:
+          - generic [ref=e45]: Quick start
+          - button "content_copy Copy" [ref=e46] [cursor=pointer]:
+            - generic [ref=e47]: content_copy
+            - text: Copy
+        - code [ref=e49]: "curl http://localhost:20127/v1/chat/completions \\ -H \"Authorization: Bearer sk-b7ffd3e6cddb6e50-2sjwdv-ad11e840\" \\ -H \"Content-Type: application/json\" \\ -d '{ \"model\": \"cbcn/glm-5.2\", \"messages\": [{\"role\": \"user\", \"content\": \"Hello\"}] }'"
+      - generic [ref=e50]:
+        - generic [ref=e51]:
+          - generic [ref=e52]: speed
+          - generic [ref=e53]: 60 req/min
+        - generic [ref=e54]:
+          - generic [ref=e55]: schedule
+          - generic [ref=e56]: Expires 01/09/2026
+    - paragraph [ref=e57]: Anyone with this link can use the key above.
+  - alert [ref=e58]

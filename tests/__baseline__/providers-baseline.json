@@ -882,7 +882,7 @@
     "format": "openai"
   },
   "codebuddy-intl": {
-    "baseUrl": "https://www.codebuddy.ai/v2/chat/completions",
+    "baseUrl": "https://www.workbuddy.ai/v2/chat/completions",
     "forceStream": true,
     "thinkingFormat": "openai",
     "headers": {
@@ -899,7 +899,7 @@
       "scheme": "bearer"
     },
     "format": "openai",
-    "tokenUrl": "https://www.codebuddy.ai/v2/plugin/auth/token"
+    "tokenUrl": "https://www.workbuddy.ai/v2/plugin/auth/token"
   },
   "zed": {
     "baseUrl": "https://cloud.zed.dev/completions",

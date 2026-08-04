@@ -1,0 +1,208 @@
+- generic [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - complementary [ref=f1e4]:
+      - link "hub 9Router Proxy v0.5.45" [ref=f1e10] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [ref=f1e11]: hub
+        - generic [ref=f1e13]:
+          - heading "9Router Proxy" [level=1] [ref=f1e14]
+          - generic [ref=f1e15]: v0.5.45
+      - navigation [ref=f1e16]:
+        - link "api Endpoint & Key" [ref=f1e17] [cursor=pointer]:
+          - /url: /dashboard/endpoint
+          - generic [ref=f1e18]: api
+          - generic [ref=f1e19]: Endpoint & Key
+        - link "dns Providers" [ref=f1e20] [cursor=pointer]:
+          - /url: /dashboard/providers
+          - generic [ref=f1e21]: dns
+          - generic [ref=f1e22]: Providers
+        - link "layers Combos" [ref=f1e23] [cursor=pointer]:
+          - /url: /dashboard/combos
+          - generic [ref=f1e24]: layers
+          - generic [ref=f1e25]: Combos
+        - link "bar_chart Usage" [ref=f1e26] [cursor=pointer]:
+          - /url: /dashboard/usage
+          - generic [ref=f1e27]: bar_chart
+          - generic [ref=f1e28]: Usage
+        - link "data_usage Quota Tracker" [ref=f1e29] [cursor=pointer]:
+          - /url: /dashboard/quota
+          - generic [ref=f1e30]: data_usage
+          - generic [ref=f1e31]: Quota Tracker
+        - link "savings Token Saver" [ref=f1e32] [cursor=pointer]:
+          - /url: /dashboard/token-saver
+          - generic [ref=f1e33]: savings
+          - generic [ref=f1e34]: Token Saver
+        - link "terminal CLI Tools" [ref=f1e35] [cursor=pointer]:
+          - /url: /dashboard/cli-tools
+          - generic [ref=f1e36]: terminal
+          - generic [ref=f1e37]: CLI Tools
+        - generic [ref=f1e38]:
+          - paragraph [ref=f1e39]: System
+          - button "perm_media Media Providers expand_more" [ref=f1e40] [cursor=pointer]:
+            - generic [ref=f1e41]: perm_media
+            - generic [ref=f1e42]: Media Providers
+            - generic [ref=f1e43]: expand_more
+          - link "lan Proxy Pools" [ref=f1e44] [cursor=pointer]:
+            - /url: /dashboard/proxy-pools
+            - generic [ref=f1e45]: lan
+            - generic [ref=f1e46]: Proxy Pools
+          - link "extension Skills" [ref=f1e47] [cursor=pointer]:
+            - /url: /dashboard/skills
+            - generic [ref=f1e48]: extension
+            - generic [ref=f1e49]: Skills
+          - link "terminal Console Log" [ref=f1e50] [cursor=pointer]:
+            - /url: /dashboard/console-log
+            - generic [ref=f1e51]: terminal
+            - generic [ref=f1e52]: Console Log
+          - button "computer 9Remote" [ref=f1e53] [cursor=pointer]:
+            - generic [ref=f1e54]: computer
+            - generic [ref=f1e55]: 9Remote
+          - link "translate 9English" [ref=f1e56] [cursor=pointer]:
+            - /url: https://9english.net/
+            - generic [ref=f1e57]: translate
+            - generic [ref=f1e58]: 9English
+          - link "settings Settings" [ref=f1e59] [cursor=pointer]:
+            - /url: /dashboard/profile
+            - generic [ref=f1e60]: settings
+            - generic [ref=f1e61]: Settings
+    - main [ref=f1e62]:
+      - generic [ref=f1e63]:
+        - generic [ref=f1e65]:
+          - generic [ref=f1e66]:
+            - generic [ref=f1e67]: api
+            - heading "Endpoint" [level=1] [ref=f1e68]
+          - paragraph [ref=f1e69]: API endpoint configuration
+        - generic [ref=f1e70]:
+          - button "Donate" [ref=f1e71] [cursor=pointer]:
+            - generic [ref=f1e72]: volunteer_activism
+          - button "Switch to light mode" [ref=f1e74] [cursor=pointer]:
+            - generic [ref=f1e75]: light_mode
+          - button "🇺🇸" [ref=f1e76] [cursor=pointer]
+          - button "grid_view" [ref=f1e79] [cursor=pointer]
+      - generic [ref=f1e83]:
+        - generic [ref=f1e84]:
+          - heading "api API Endpoint" [level=2] [ref=f1e85]:
+            - generic [ref=f1e86]: api
+            - text: API Endpoint
+          - generic [ref=f1e87]:
+            - generic [ref=f1e88]:
+              - generic [ref=f1e89]: Local
+              - textbox [ref=f1e92]: http://localhost:20127/v1
+              - button "content_copy" [ref=f1e93] [cursor=pointer]
+            - generic [ref=f1e95]:
+              - generic [ref=f1e96]: Tunnel
+              - button "cloud_upload Enable" [ref=f1e97] [cursor=pointer]:
+                - generic [ref=f1e98]: cloud_upload
+                - text: Enable
+            - generic [ref=f1e99]:
+              - generic [ref=f1e100]: Tailscale
+              - button "vpn_lock Enable" [ref=f1e101] [cursor=pointer]:
+                - generic [ref=f1e102]: vpn_lock
+                - text: Enable
+          - generic [ref=f1e104]:
+            - generic [ref=f1e105]: warning
+            - paragraph [ref=f1e106]: Enable "Require login" and set a custom password before activating the tunnel.
+            - link "Open settings" [ref=f1e107] [cursor=pointer]:
+              - /url: /dashboard/profile
+        - generic [ref=f1e108]:
+          - generic [ref=f1e109]:
+            - heading "vpn_key API Keys" [level=2] [ref=f1e110]:
+              - generic [ref=f1e111]: vpn_key
+              - text: API Keys
+            - button "add Create Key" [ref=f1e112] [cursor=pointer]:
+              - generic [ref=f1e113]: add
+              - text: Create Key
+          - generic [ref=f1e114]:
+            - generic [ref=f1e115]:
+              - paragraph [ref=f1e116]: Require API key
+              - paragraph [ref=f1e117]: Requests without a valid key will be rejected
+            - switch [checked] [ref=f1e119] [cursor=pointer]
+          - generic [ref=f1e120]:
+            - generic [ref=f1e121]:
+              - generic [ref=f1e122]:
+                - paragraph [ref=f1e123]: key
+                - generic [ref=f1e124]:
+                  - code [ref=f1e125]: sk-b7f•••••••••••••••••••••••••ce10
+                  - button "visibility" [ref=f1e126] [cursor=pointer]
+                  - button "content_copy" [ref=f1e128] [cursor=pointer]
+                - paragraph [ref=f1e130]: Created 7/4/2026
+              - generic [ref=f1e131]:
+                - switch [checked] [ref=f1e133] [cursor=pointer]
+                - button "settings" [ref=f1e134] [cursor=pointer]
+                - button "delete" [ref=f1e136] [cursor=pointer]
+            - generic [ref=f1e138]:
+              - generic [ref=f1e139]:
+                - paragraph [ref=f1e140]: public
+                - generic [ref=f1e141]:
+                  - code [ref=f1e142]: sk-b7f•••••••••••••••••••••••••e840
+                  - button "visibility" [ref=f1e143] [cursor=pointer]
+                  - button "content_copy" [ref=f1e145] [cursor=pointer]
+                - paragraph [ref=f1e147]: Created 7/22/2026
+              - generic [ref=f1e148]:
+                - switch [checked] [ref=f1e150] [cursor=pointer]
+                - button "settings" [active] [ref=f1e151] [cursor=pointer]
+                - button "delete" [ref=f1e153] [cursor=pointer]
+        - generic [ref=f1e158]:
+          - generic [ref=f1e160]:
+            - generic [ref=f1e162]:
+              - button "Close" [ref=f1e163] [cursor=pointer]:
+                - generic [ref=f1e164]: ✕
+              - generic: Close
+            - heading "Settings - public" [level=2] [ref=f1e167]
+          - generic [ref=f1e169]:
+            - generic [ref=f1e170]:
+              - generic [ref=f1e171]:
+                - generic [ref=f1e172]: insights
+                - generic [ref=f1e173]: Usage
+              - generic [ref=f1e174]:
+                - generic [ref=f1e175]:
+                  - paragraph [ref=f1e176]: "1"
+                  - paragraph [ref=f1e177]: Requests
+                - generic [ref=f1e178]:
+                  - paragraph [ref=f1e179]: 68,000
+                  - paragraph [ref=f1e180]: Tokens
+                - generic [ref=f1e181]:
+                  - paragraph [ref=f1e182]: "0"
+                  - paragraph [ref=f1e183]: Errors
+              - generic [ref=f1e184]:
+                - generic [ref=f1e185]: In 40,000
+                - generic [ref=f1e186]: Out 28,000
+                - generic [ref=f1e187]: $0.0123
+              - generic [ref=f1e189]:
+                - generic [ref=f1e190]: Quota
+                - generic [ref=f1e191]: 68,000 / 100,000 (68%)
+            - generic [ref=f1e194]:
+              - generic [ref=f1e195]:
+                - generic [ref=f1e196]: tune
+                - generic [ref=f1e197]: Limits
+              - generic [ref=f1e198]:
+                - generic [ref=f1e199]:
+                  - generic [ref=f1e200]: Rate limit (req/min)
+                  - spinbutton "Unlimited" [ref=f1e202]: "60"
+                - generic [ref=f1e203]:
+                  - generic [ref=f1e204]: Token quota (per month)
+                  - spinbutton "Unlimited" [ref=f1e206]: "100000"
+              - generic [ref=f1e207]:
+                - generic [ref=f1e208]: Expires at
+                - textbox [ref=f1e210]
+            - generic [ref=f1e211]:
+              - generic [ref=f1e212]:
+                - generic [ref=f1e213]: list
+                - generic [ref=f1e214]: Allowed models
+              - paragraph [ref=f1e215]: One per line. Provider models or combo names. Empty = all models.
+              - textbox "glm/glm-5.2 cc/claude-opus-4-7 my-combo" [ref=f1e216]:
+                - /placeholder: "glm/glm-5.2\ncc/claude-opus-4-7\nmy-combo"
+                - text: cbcn/glm-5.2 my-combo
+            - generic [ref=f1e217]:
+              - generic [ref=f1e218]:
+                - generic [ref=f1e219]: share
+                - generic [ref=f1e220]: Public share
+                - generic [ref=f1e221]: Live
+              - generic [ref=f1e223]:
+                - code [ref=f1e224]: http://localhost:20127
+                - button "content_copy" [ref=f1e225] [cursor=pointer]
+                - button "Stop" [ref=f1e227] [cursor=pointer]
+            - generic [ref=f1e228]:
+              - button "Save" [ref=f1e229] [cursor=pointer]
+              - button "Cancel" [ref=f1e230] [cursor=pointer]
+  - alert [ref=f1e155]

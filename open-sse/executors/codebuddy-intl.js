@@ -3,9 +3,9 @@ import { DefaultExecutor } from "./default.js";
 import { sanitizeRequestBody } from "../utils/contentFilters.js";
 
 /**
- * CodeBuddyIntlExecutor — talks to https://www.codebuddy.ai/v2/chat/completions
+ * CodeBuddyIntlExecutor — talks to https://www.workbuddy.ai/v2/chat/completions
  *
- * The intl gateway (codebuddy.ai) enforces stricter request validation than CN:
+ * The intl gateway (workbuddy.ai) enforces stricter request validation than CN:
  * requires X-Domain, per-request conversation IDs, and browser-like User-Agent.
  * CLI-style headers trigger code 11140 "request illegal".
  */
