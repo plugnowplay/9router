@@ -20,6 +20,7 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
   const [modelsText, setModelsText] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [copiedShare, setCopiedShare] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !apiKey) return;
@@ -104,6 +105,26 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
             placeholder={"glm/glm-5.2\ncc/claude-opus-4-7\nkr/claude-sonnet-4.5"}
             className="w-full min-h-32 rounded border border-border bg-surface p-2 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
+        </div>
+
+        <div className="flex flex-col gap-2 pt-3 border-t border-border">
+          <label className="text-sm font-medium">Share URL</label>
+          <p className="text-xs text-text-muted">
+            {typeof window !== "undefined" ? `${window.location.origin}/?key=${apiKey.id}` : `your-domain/?key=${apiKey.id}`}
+          </p>
+          <Button
+            variant="secondary"
+            icon={copiedShare ? "check" : "content_copy"}
+            onClick={() => {
+              const url = `${window.location.origin}/?key=${apiKey.id}`;
+              navigator.clipboard.writeText(url).then(() => {
+                setCopiedShare(true);
+                setTimeout(() => setCopiedShare(false), 2000);
+              });
+            }}
+          >
+            {copiedShare ? "Copied" : "Copy share URL"}
+          </Button>
         </div>
 
         {error && <p className="text-sm text-red-500">{error}</p>}
