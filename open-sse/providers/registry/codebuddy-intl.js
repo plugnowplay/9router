@@ -38,6 +38,12 @@ export default {
       header: "Authorization",
       scheme: "bearer",
     },
+    // Quota endpoint mirrors the CN gateway path on the .ai domain. POST returns
+    // the same nested Tencent billing payload (data.Response.Data.Accounts[]).
+    // See services/usage/codebuddy-cn.js (shared by intl via providerId param).
+    usage: {
+      url: "https://www.codebuddy.ai/v2/billing/meter/get-user-resource",
+    },
   },
   // Same model lineup exposed by the CN gateway — intl backend is the same catalog.
   models: [

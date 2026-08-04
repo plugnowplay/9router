@@ -12,6 +12,7 @@ export {
   createProxyPool, updateProxyPool, deleteProxyPool,
   getApiKeys, getApiKeyById, createApiKey, updateApiKey, deleteApiKey, validateApiKey,
   getApiKeyByShareToken, getValidApiKeyRecord, incrementTokenUsage, resetQuotaIfNeeded,
+  getPublicApiKey, setPublicApiKey, unsetPublicApiKey,
   getCombos, getComboById, getComboByName,
   createCombo, updateCombo, deleteCombo,
   getModelAliases, setModelAlias, deleteModelAlias,

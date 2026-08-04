@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Button, Input, Modal } from "@/shared/components";
-import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
 // datetime-local wants "YYYY-MM-DDTHH:mm" in local time.
 function toLocalInput(iso) {
@@ -18,46 +17,39 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
   const [rateLimitRpm, setRateLimitRpm] = useState("");
   const [tokenQuota, setTokenQuota] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
-  const [selected, setSelected] = useState([]);
-  const [models, setModels] = useState([]);
-  const [shareUrl, setShareUrl] = useState("");
+  const [modelsText, setModelsText] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
+  const [toggling, setToggling] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const { copied, copy } = useCopyToClipboard();
 
   useEffect(() => {
     if (!isOpen || !apiKey) return;
     setRateLimitRpm(apiKey.rateLimitRpm == null ? "" : String(apiKey.rateLimitRpm));
     setTokenQuota(apiKey.tokenQuota == null ? "" : String(apiKey.tokenQuota));
     setExpiresAt(toLocalInput(apiKey.expiresAt));
-    setSelected(Array.isArray(apiKey.modelWhitelist) ? apiKey.modelWhitelist : []);
-    setShareUrl("");
+    setModelsText(Array.isArray(apiKey.modelWhitelist) ? apiKey.modelWhitelist.join("\n") : "");
+    setIsPublic(apiKey.isPublic === true);
     setError("");
-    fetch("/api/models")
-      .then((r) => (r.ok ? r.json() : { models: [] }))
-      .then((d) => setModels(Array.isArray(d.models) ? d.models : []))
-      .catch(() => setModels([]));
   }, [isOpen, apiKey]);
 
   if (!apiKey) return null;
-
-  const toggleModel = (routedModel) => {
-    setSelected((prev) =>
-      prev.includes(routedModel) ? prev.filter((m) => m !== routedModel) : [...prev, routedModel]
-    );
-  };
 
   const handleSave = async () => {
     setSaving(true);
     setError("");
     try {
+      const list = modelsText
+        .split("\n")
+        .map((m) => m.trim())
+        .filter(Boolean);
       const res = await fetch("/api/keys/" + apiKey.id, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           rateLimitRpm: rateLimitRpm === "" ? null : Number(rateLimitRpm),
           tokenQuota: tokenQuota === "" ? null : Number(tokenQuota),
-          modelWhitelist: selected.length ? selected : null,
+          modelWhitelist: list.length ? list : null,
           expiresAt: expiresAt === "" ? null : new Date(expiresAt).toISOString(),
         }),
       });
@@ -75,35 +67,23 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
     }
   };
 
-  const handleGenerateShare = async () => {
+  const handleTogglePublic = async () => {
     setError("");
+    setToggling(true);
     try {
-      const res = await fetch("/api/keys/" + apiKey.id + "/share", { method: "POST" });
-      const data = await res.json();
+      const method = isPublic ? "DELETE" : "POST";
+      const res = await fetch("/api/keys/" + apiKey.id + "/share", { method });
       if (!res.ok) {
-        setError(data.error || "Failed to create share link");
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || ("Failed to " + (isPublic ? "revoke" : "enable") + " public access"));
         return;
       }
-      setShareUrl(data.shareUrl);
+      setIsPublic(!isPublic);
       if (onSaved) onSaved();
     } catch (e) {
       setError(e.message);
-    }
-  };
-
-  const handleRevokeShare = async () => {
-    setError("");
-    try {
-      const res = await fetch("/api/keys/" + apiKey.id + "/share", { method: "DELETE" });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || "Failed to revoke");
-        return;
-      }
-      setShareUrl("");
-      if (onSaved) onSaved();
-    } catch (e) {
-      setError(e.message);
+    } finally {
+      setToggling(false);
     }
   };
 
@@ -146,52 +126,36 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium">
             Allowed models
-            <span className="text-text-muted font-normal"> - none selected means all models</span>
+            <span className="text-text-muted font-normal"> - one per line, empty means all models</span>
           </label>
-          <div className="max-h-52 overflow-y-auto rounded border border-border p-2 flex flex-col gap-2">
-            {Object.keys(grouped).length === 0 && (
-              <p className="text-xs text-text-muted">No models available.</p>
-            )}
-            {Object.entries(grouped).map(([provider, list]) => (
-              <div key={provider}>
-                <p className="text-xs font-semibold text-text-muted uppercase">{provider}</p>
-                {list.map((m) => (
-                  <label key={m.routedModel} className="flex items-center gap-2 text-sm py-0.5">
-                    <input
-                      type="checkbox"
-                      checked={selected.includes(m.routedModel)}
-                      onChange={() => toggleModel(m.routedModel)}
-                    />
-                    <span className="font-mono text-xs">{m.routedModel}</span>
-                  </label>
-                ))}
-              </div>
-            ))}
-          </div>
+          <textarea
+            value={modelsText}
+            onChange={(e) => setModelsText(e.target.value)}
+            placeholder={"glm/glm-5.2\ncc/claude-opus-4-7\nkr/claude-sonnet-4.5"}
+            className="w-full min-h-32 rounded border border-border bg-surface p-2 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
+          />
         </div>
 
         <div className="flex flex-col gap-2 pt-3 border-t border-border">
-          <label className="text-sm font-medium">Public share link</label>
-          <p className="text-xs text-yellow-600 dark:text-yellow-400">
-            Anyone with this link sees the full API key.
-          </p>
-          {shareUrl ? (
-            <div className="flex gap-2">
-              <Input value={shareUrl} readOnly className="flex-1 font-mono text-xs" />
-              <Button
-                variant="secondary"
-                icon={copied === "share" ? "check" : "content_copy"}
-                onClick={() => copy(shareUrl, "share")}
-              />
-              <Button variant="danger" onClick={handleRevokeShare}>Revoke</Button>
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm font-medium">Public access</label>
+              <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                When on, this key is shown at the root URL ({typeof window !== "undefined" ? window.location.origin : "your domain"}).
+              </p>
             </div>
-          ) : (
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={handleGenerateShare}>Generate share link</Button>
-              {apiKey.shareToken && (
-                <Button variant="danger" onClick={handleRevokeShare}>Revoke existing</Button>
-              )}
-            </div>
+            <Button
+              variant={isPublic ? "danger" : "secondary"}
+              onClick={handleTogglePublic}
+              disabled={toggling}
+            >
+              {toggling ? "..." : isPublic ? "Revoke public" : "Make public"}
+            </Button>
+          </div>
+          {isPublic && (
+            <p className="text-xs text-green-600 dark:text-green-400">
+              This key is currently public at the root URL.
+            </p>
           )}
         </div>
 

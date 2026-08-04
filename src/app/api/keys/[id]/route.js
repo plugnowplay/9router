@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { deleteApiKey, getApiKeyById, updateApiKey } from "@/lib/localDb";
+import {
+  deleteApiKey,
+  getApiKeyById,
+  updateApiKey,
+  setPublicApiKey,
+  unsetPublicApiKey,
+} from "@/lib/localDb";
 import { parseKeyLimitFields, stripShareToken } from "@/lib/keyLimitFields";
 
 // GET /api/keys/[id] - Get single key
@@ -38,7 +44,18 @@ export async function PUT(request, { params }) {
     const updateData = { ...fields };
     if (isActive !== undefined) updateData.isActive = isActive;
 
-    const updated = await updateApiKey(id, updateData);
+    // isPublic is a singleton invariant — route through set/unset so other rows
+    // are cleared. The toggle handler in the UI sends only { isPublic: bool }.
+    let updated;
+    if (body.isPublic === true) {
+      updated = await setPublicApiKey(id);
+      if (Object.keys(updateData).length) updated = await updateApiKey(id, updateData) ?? updated;
+    } else if (body.isPublic === false) {
+      updated = await unsetPublicApiKey(id);
+      if (Object.keys(updateData).length) updated = await updateApiKey(id, updateData) ?? updated;
+    } else {
+      updated = await updateApiKey(id, updateData);
+    }
 
     return NextResponse.json({ key: stripShareToken(updated) });
   } catch (error) {

@@ -123,7 +123,8 @@ export function _getGrokCliTurnStoreSize() {
 
 export function normalizeGrokCliEffort(value) {
   const effort = typeof value === "string" ? value.trim().toLowerCase() : "";
-  if (effort === "max") return "xhigh";
+  // Grok Build rejects "max"/"xhigh" — map to "high" (see grok2api normalize.go).
+  if (effort === "max" || effort === "xhigh") return "high";
   if (EFFORT_LEVELS.includes(effort)) return effort;
   return "high";
 }

@@ -3,7 +3,7 @@
 // pre-change safety backup in migrate.js: when the stored version is lower,
 // one lightweight DB backup is taken before applying schema changes. Forgetting
 // to bump only skips that backup — it does NOT break the additive auto-sync.
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export const PRAGMA_SQL = `
 PRAGMA journal_mode = WAL;
@@ -93,10 +93,12 @@ export const TABLES = {
       // inline UNIQUE, which would break auto-sync on existing DBs.
       // Uniqueness is enforced by idx_ak_share_token below.
       shareToken: "TEXT",
+      isPublic: "INTEGER DEFAULT 0",
     },
     indexes: [
       "CREATE INDEX IF NOT EXISTS idx_ak_key ON apiKeys(key)",
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_ak_share_token ON apiKeys(shareToken)",
+      "CREATE INDEX IF NOT EXISTS idx_ak_public ON apiKeys(isPublic) WHERE isPublic = 1",
     ],
   },
   combos: {

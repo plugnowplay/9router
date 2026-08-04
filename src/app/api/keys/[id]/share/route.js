@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { getApiKeyById, updateApiKey } from "@/lib/localDb";
+import { getApiKeyById, setPublicApiKey, unsetPublicApiKey } from "@/lib/localDb";
 
 export const dynamic = "force-dynamic";
 
-// POST /api/keys/[id]/share - issue a public share token
+// POST /api/keys/[id]/share - mark this key as the single public key.
+// The share URL is the bare origin (root /) — the landing page there fetches
+// /api/public-key to surface whichever key currently holds isPublic=1.
 export async function POST(request, { params }) {
   try {
     const { id } = await params;
@@ -13,14 +15,10 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "Key not found" }, { status: 404 });
     }
 
-    const shareToken = existing.shareToken || uuidv4();
-    if (!existing.shareToken) {
-      await updateApiKey(id, { shareToken });
-    }
+    await setPublicApiKey(id);
 
     return NextResponse.json({
-      shareToken,
-      shareUrl: request.nextUrl.origin + "/s/" + shareToken,
+      shareUrl: request.nextUrl.origin,
     }, { status: 201 });
   } catch (error) {
     console.log("Error creating share token:", error);
@@ -28,7 +26,7 @@ export async function POST(request, { params }) {
   }
 }
 
-// DELETE /api/keys/[id]/share - revoke the share token
+// DELETE /api/keys/[id]/share - revoke public status + share token
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params;
@@ -37,7 +35,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: "Key not found" }, { status: 404 });
     }
 
-    await updateApiKey(id, { shareToken: null });
+    await unsetPublicApiKey(id);
     return NextResponse.json({ message: "Share link revoked" });
   } catch (error) {
     console.log("Error revoking share token:", error);

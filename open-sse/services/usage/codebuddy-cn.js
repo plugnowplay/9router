@@ -1,11 +1,12 @@
 /**
- * CodeBuddy CN usage handler
+ * CodeBuddy usage handler (shared by CN + Intl)
  *
- * Scoped to the "codebuddy-cn" provider specifically — a future "codebuddy-intl"
- * variant would get its own handler/endpoint, so keep this CN-only.
+ * Same Tencent billing shape (POST, payload wrapped twice under
+ * data.Response.Data) is used by both codebuddy-cn and codebuddy-intl — only
+ * the domain differs (registry transport.usage.url). Kept in one place so the
+ * two variants cannot drift apart.
  *
- * Quota lives behind a Tencent billing endpoint (POST, payload wrapped twice
- * under data.Response.Data). It mixes two credit types that must NOT be merged:
+ * Quota mixes two credit types that must NOT be merged:
  *
  *  - Refill / base ("基础体验包"): a recurring allowance whose cycle resets long
  *    before the resource itself expires (CycleEndTime << DeductionEndTime). The
@@ -22,8 +23,6 @@
 import { proxyAwareFetch } from "../../utils/proxyFetch.js";
 import { PROVIDERS } from "../../providers/index.js";
 import { U, parseResetTime } from "./shared.js";
-
-const PROVIDER_ID = "codebuddy-cn";
 
 // Prefer the *Precise string fields (exact), fall back to the numeric ones.
 function num(precise, plain) {
@@ -43,17 +42,18 @@ function refillCadence(acc) {
   return "Monthly";
 }
 
-export async function getCodeBuddyCnUsage(accessToken, apiKey, providerSpecificData, proxyOptions = null) {
+export async function getCodeBuddyUsage(accessToken, apiKey, providerSpecificData, proxyOptions = null, providerId = "codebuddy-cn") {
   const token = accessToken || apiKey;
   if (!token) {
-    return { message: "CodeBuddy CN credential not available." };
+    return { message: "CodeBuddy credential not available." };
   }
 
+  const usageUrl = U(providerId).url;
   try {
-    const response = await proxyAwareFetch(U(PROVIDER_ID).url, {
+    const response = await proxyAwareFetch(usageUrl, {
       method: "POST",
       headers: {
-        ...(PROVIDERS[PROVIDER_ID]?.headers || {}),
+        ...(PROVIDERS[providerId]?.headers || {}),
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
         Accept: "application/json",
@@ -62,21 +62,21 @@ export async function getCodeBuddyCnUsage(accessToken, apiKey, providerSpecificD
     }, proxyOptions);
 
     if (response.status === 401 || response.status === 403) {
-      return { message: "CodeBuddy CN credential invalid or expired." };
+      return { message: "CodeBuddy credential invalid or expired." };
     }
     if (!response.ok) {
-      return { message: `CodeBuddy CN quota API error (${response.status}).` };
+      return { message: `CodeBuddy quota API error (${response.status}).` };
     }
 
     const json = await response.json();
     if (json?.code !== 0) {
-      return { message: `CodeBuddy CN quota error: ${json?.msg || "unknown"}` };
+      return { message: `CodeBuddy quota error: ${json?.msg || "unknown"}` };
     }
 
     const data = json?.data?.Response?.Data || {};
     const accounts = Array.isArray(data.Accounts) ? data.Accounts : [];
     if (accounts.length === 0) {
-      return { message: "CodeBuddy CN connected. No credit package found." };
+      return { message: "CodeBuddy connected. No credit package found." };
     }
 
     const cycleEndMs = (acc) => {
@@ -129,10 +129,10 @@ export async function getCodeBuddyCnUsage(accessToken, apiKey, providerSpecificD
     });
 
     const basePkg = refills[0] || accounts[0] || {};
-    const plan = basePkg.PackageName || basePkg.SubProductName || "CodeBuddy CN";
+    const plan = basePkg.PackageName || basePkg.SubProductName || "CodeBuddy";
 
     return { plan, quotas };
   } catch (error) {
-    return { message: `CodeBuddy CN error: ${error.message}` };
+    return { message: `CodeBuddy error: ${error.message}` };
   }
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSettings, validateApiKey } from "@/lib/localDb";
+import { getSettings, validateApiKey, getPublicApiKey } from "@/lib/localDb";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
 import { verifyDashboardAuthToken } from "@/lib/auth/dashboardSession";
 
@@ -30,8 +30,9 @@ const PUBLIC_API_PATHS = [
   "/api/version",
   "/api/settings/require-login",
   // Public share links: the whole /api/* branch below is deny-by-default,
-  // so the share endpoint 401s unless it is listed here.
+  // so these endpoints 401 unless they are listed here.
   "/api/share",
+  "/api/public-key",
 ];
 
 // Public top-level prefixes (LLM API endpoints with their own API key auth).
@@ -254,8 +255,17 @@ export async function proxy(request) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Redirect / to /dashboard if logged in, or /dashboard if it's the root
+  // Root /: render the public-key landing page if a key is marked public,
+  // otherwise redirect to /dashboard (which itself redirects to /login when
+  // unauthenticated). Falls back to redirect on any DB error so the root
+  // never 500s just because the public-key lookup failed.
   if (pathname === "/") {
+    try {
+      const pub = await getPublicApiKey();
+      if (pub) return NextResponse.next();
+    } catch {
+      // fall through to redirect
+    }
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

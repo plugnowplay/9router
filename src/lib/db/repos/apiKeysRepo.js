@@ -18,6 +18,7 @@ function rowToKey(row) {
     modelWhitelist: parseJson(row.modelWhitelist, null),
     expiresAt: row.expiresAt ?? null,
     shareToken: row.shareToken ?? null,
+    isPublic: row.isPublic === 1 || row.isPublic === true,
   };
 }
 
@@ -43,6 +44,46 @@ export async function getApiKeyByShareToken(token) {
   const db = await getAdapter();
   const row = db.get("SELECT * FROM apiKeys WHERE shareToken = ?", [token]);
   return rowToKey(row);
+}
+
+// The single public key surfaced on the landing page (root /). NULL when none
+// is marked public — at most one row can be isPublic=1 (enforced by setPublic).
+export async function getPublicApiKey() {
+  const db = await getAdapter();
+  const row = db.get("SELECT * FROM apiKeys WHERE isPublic = 1 LIMIT 1");
+  return rowToKey(row);
+}
+
+// Promote this key to the single public key: clear isPublic on every other row,
+// then set isPublic=1 here. shareToken is also minted so the existing
+// /api/share/[token] route keeps working for anyone still using a token URL.
+export async function setPublicApiKey(id) {
+  if (!id) return null;
+  const { v4: uuidv4 } = await import("uuid");
+  const db = await getAdapter();
+  let result = null;
+  db.transaction(() => {
+    const row = db.get("SELECT * FROM apiKeys WHERE id = ?", [id]);
+    if (!row) return;
+    db.run("UPDATE apiKeys SET isPublic = 0 WHERE id != ?", [id]);
+    const shareToken = row.shareToken || uuidv4();
+    db.run("UPDATE apiKeys SET isPublic = 1, shareToken = ? WHERE id = ?", [shareToken, id]);
+    result = rowToKey(db.get("SELECT * FROM apiKeys WHERE id = ?", [id]));
+  });
+  return result;
+}
+
+export async function unsetPublicApiKey(id) {
+  if (!id) return null;
+  const db = await getAdapter();
+  let result = null;
+  db.transaction(() => {
+    const row = db.get("SELECT * FROM apiKeys WHERE id = ?", [id]);
+    if (!row) return;
+    db.run("UPDATE apiKeys SET isPublic = 0, shareToken = NULL WHERE id = ?", [id]);
+    result = rowToKey(db.get("SELECT * FROM apiKeys WHERE id = ?", [id]));
+  });
+  return result;
 }
 
 // Full record for limit enforcement. validateApiKey stays boolean because
@@ -75,14 +116,15 @@ export async function createApiKey(name, machineId, options = {}) {
     modelWhitelist: options.modelWhitelist ?? null,
     expiresAt: options.expiresAt ?? null,
     shareToken: null,
+    isPublic: false,
   };
   db.run(
-    "INSERT INTO apiKeys(id, key, name, machineId, isActive, createdAt, rateLimitRpm, tokenQuota, tokenUsed, quotaResetAt, modelWhitelist, expiresAt, shareToken) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO apiKeys(id, key, name, machineId, isActive, createdAt, rateLimitRpm, tokenQuota, tokenUsed, quotaResetAt, modelWhitelist, expiresAt, shareToken, isPublic) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     [
       apiKey.id, apiKey.key, apiKey.name, apiKey.machineId, 1, apiKey.createdAt,
       apiKey.rateLimitRpm, apiKey.tokenQuota, 0, null,
       apiKey.modelWhitelist == null ? null : stringifyJson(apiKey.modelWhitelist),
-      apiKey.expiresAt, null,
+      apiKey.expiresAt, null, 0,
     ]
   );
   return apiKey;
@@ -96,13 +138,14 @@ export async function updateApiKey(id, data) {
     if (!row) return;
     const merged = { ...rowToKey(row), ...data };
     db.run(
-      "UPDATE apiKeys SET key = ?, name = ?, machineId = ?, isActive = ?, rateLimitRpm = ?, tokenQuota = ?, tokenUsed = ?, quotaResetAt = ?, modelWhitelist = ?, expiresAt = ?, shareToken = ? WHERE id = ?",
+      "UPDATE apiKeys SET key = ?, name = ?, machineId = ?, isActive = ?, rateLimitRpm = ?, tokenQuota = ?, tokenUsed = ?, quotaResetAt = ?, modelWhitelist = ?, expiresAt = ?, shareToken = ?, isPublic = ? WHERE id = ?",
       [
         merged.key, merged.name, merged.machineId, merged.isActive ? 1 : 0,
         merged.rateLimitRpm ?? null, merged.tokenQuota ?? null,
         merged.tokenUsed ?? 0, merged.quotaResetAt ?? null,
         merged.modelWhitelist == null ? null : stringifyJson(merged.modelWhitelist),
         merged.expiresAt ?? null, merged.shareToken ?? null,
+        merged.isPublic ? 1 : 0,
         id,
       ]
     );
