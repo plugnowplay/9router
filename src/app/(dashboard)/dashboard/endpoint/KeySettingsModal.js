@@ -94,88 +94,122 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
     }
   };
 
+  const quotaNum = tokenQuota === "" ? null : Number(tokenQuota);
+  const quotaUsed = usage?.keyQuota?.used ?? apiKey.tokenUsed ?? 0;
+  const quotaPct = quotaNum && quotaNum > 0
+    ? Math.min(100, Math.round((quotaUsed / quotaNum) * 100))
+    : null;
+  const quotaBar = quotaPct == null ? null
+    : quotaPct >= 90 ? "bg-red-500"
+    : quotaPct >= 70 ? "bg-amber-500"
+    : "bg-emerald-500";
+
   return (
     <Modal isOpen={isOpen} title={"Settings - " + (apiKey.name || "API key")} onClose={onClose}>
-      <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="Rate limit (req/min)"
-            type="number"
-            min="0"
-            value={rateLimitRpm}
-            onChange={(e) => setRateLimitRpm(e.target.value)}
-            placeholder="Unlimited"
-          />
-          <Input
-            label="Token quota (per month)"
-            type="number"
-            min="0"
-            value={tokenQuota}
-            onChange={(e) => setTokenQuota(e.target.value)}
-            placeholder="Unlimited"
-          />
-        </div>
-
-        <Input
-          label="Expires at"
-          type="datetime-local"
-          value={expiresAt}
-          onChange={(e) => setExpiresAt(e.target.value)}
-        />
-
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium">
-            Allowed models
-            <span className="text-text-muted font-normal"> - one per line. Supports combos too. Empty = all models</span>
-          </label>
-          <textarea
-            value={modelsText}
-            onChange={(e) => setModelsText(e.target.value)}
-            placeholder={"glm/glm-5.2\ncc/claude-opus-4-7\nmy-combo"}
-            className="w-full min-h-32 rounded border border-border bg-surface p-2 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
-          />
-        </div>
-
-        {usage && usage.totals && (
-          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
-            <div>
-              <p className="text-xs text-text-muted">Requests</p>
-              <p className="text-sm font-medium">{usage.totals.requests.toLocaleString()}</p>
+      <div className="flex flex-col gap-5">
+        {usage?.totals && (
+          <div className="rounded-lg border border-border bg-surface-2/40 p-4 flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px] text-text-muted">insights</span>
+              <span className="text-sm font-semibold">Usage</span>
             </div>
-            <div>
-              <p className="text-xs text-text-muted">Tokens used</p>
-              <p className="text-sm font-medium">{(usage.totals.totalTokens || 0).toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-xs text-text-muted">Prompt tokens</p>
-              <p className="text-sm font-medium">{(usage.totals.promptTokens || 0).toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-xs text-text-muted">Completion tokens</p>
-              <p className="text-sm font-medium">{(usage.totals.completionTokens || 0).toLocaleString()}</p>
-            </div>
-            {usage.totals.cost > 0 && (
+            <div className="grid grid-cols-3 gap-3">
               <div>
-                <p className="text-xs text-text-muted">Cost</p>
-                <p className="text-sm font-medium">${usage.totals.cost.toFixed(4)}</p>
+                <p className="text-lg font-semibold tabular-nums">{usage.totals.requests.toLocaleString()}</p>
+                <p className="text-xs text-text-muted">Requests</p>
               </div>
-            )}
-            {usage.totals.errors > 0 && (
               <div>
+                <p className="text-lg font-semibold tabular-nums">{(usage.totals.totalTokens || 0).toLocaleString()}</p>
+                <p className="text-xs text-text-muted">Tokens</p>
+              </div>
+              <div>
+                <p className={`text-lg font-semibold tabular-nums ${usage.totals.errors > 0 ? "text-red-500" : ""}`}>
+                  {usage.totals.errors.toLocaleString()}
+                </p>
                 <p className="text-xs text-text-muted">Errors</p>
-                <p className="text-sm font-medium text-red-500">{usage.totals.errors}</p>
+              </div>
+            </div>
+            <div className="flex gap-4 text-xs text-text-muted">
+              <span>In {(usage.totals.promptTokens || 0).toLocaleString()}</span>
+              <span>Out {(usage.totals.completionTokens || 0).toLocaleString()}</span>
+              {usage.totals.cost > 0 && <span>${usage.totals.cost.toFixed(4)}</span>}
+            </div>
+            {quotaPct != null && (
+              <div className="flex flex-col gap-1.5 pt-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-text-muted">Quota</span>
+                  <span className="font-mono">
+                    {quotaUsed.toLocaleString()} / {quotaNum.toLocaleString()} ({quotaPct}%)
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-surface overflow-hidden">
+                  <div className={`h-full rounded-full ${quotaBar} transition-all`} style={{ width: `${quotaPct}%` }} />
+                </div>
               </div>
             )}
           </div>
         )}
-
-        <div className="flex flex-col gap-2 pt-3 border-t border-border">
-          <label className="text-sm font-medium">Shared at root URL</label>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px] text-text-muted">tune</span>
+            <span className="text-sm font-semibold">Limits</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Rate limit (req/min)"
+              type="number"
+              min="0"
+              value={rateLimitRpm}
+              onChange={(e) => setRateLimitRpm(e.target.value)}
+              placeholder="Unlimited"
+            />
+            <Input
+              label="Token quota (per month)"
+              type="number"
+              min="0"
+              value={tokenQuota}
+              onChange={(e) => setTokenQuota(e.target.value)}
+              placeholder="Unlimited"
+            />
+          </div>
+          <Input
+            label="Expires at"
+            type="datetime-local"
+            value={expiresAt}
+            onChange={(e) => setExpiresAt(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px] text-text-muted">list</span>
+            <span className="text-sm font-semibold">Allowed models</span>
+          </div>
+          <p className="text-xs text-text-muted -mt-1">
+            One per line. Provider models or combo names. Empty = all models.
+          </p>
+          <textarea
+            value={modelsText}
+            onChange={(e) => setModelsText(e.target.value)}
+            placeholder={"glm/glm-5.2\ncc/claude-opus-4-7\nmy-combo"}
+            className="w-full min-h-28 rounded-lg border border-border bg-surface p-3 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+        <div className="flex flex-col gap-2 pt-4 border-t border-border">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px] text-text-muted">share</span>
+            <span className="text-sm font-semibold">Public share</span>
+            {isShared && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 text-[11px] font-medium">
+                <span className="size-1.5 rounded-full bg-emerald-500" />
+                Live
+              </span>
+            )}
+          </div>
           {isShared ? (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-green-600 dark:text-green-400 flex-1">
+              <code className="flex-1 truncate rounded-lg bg-surface-2 px-3 py-2 text-xs font-mono">
                 {typeof window !== "undefined" ? window.location.origin : "your-domain"}
-              </span>
+              </code>
               <Button
                 variant="secondary"
                 icon={copiedShare ? "check" : "content_copy"}
@@ -188,7 +222,7 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
                 }}
               />
               <Button variant="danger" disabled={toggling} onClick={handleToggleShared}>
-                {toggling ? "..." : "Stop sharing"}
+                {toggling ? "..." : "Stop"}
               </Button>
             </div>
           ) : (
@@ -200,7 +234,7 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
 
         {error && <p className="text-sm text-red-500">{error}</p>}
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 pt-1">
           <Button onClick={handleSave} fullWidth disabled={saving}>
             {saving ? "Saving..." : "Save"}
           </Button>
