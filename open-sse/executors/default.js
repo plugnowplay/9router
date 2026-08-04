@@ -199,6 +199,9 @@ export class DefaultExecutor extends BaseExecutor {
             }
           }
         }
+        if (!headers["user-agent"] && !headers["User-Agent"]) {
+          headers["user-agent"] = "claude-cli/1.0.86 (external, cli)";
+        }
       }
     }
 
