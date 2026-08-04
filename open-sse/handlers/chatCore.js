@@ -247,12 +247,31 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   const msgCount = translatedBody.messages?.length || translatedBody.input?.length || translatedBody.contents?.length || translatedBody.request?.contents?.length || 0;
   log?.debug?.("REQUEST", `${provider.toUpperCase()} | ${model} | ${msgCount} msgs`);
 
+  // Generate the request-detail id early so onError (below) can update the
+  // initial record with a terminal status when the stream aborts before a
+  // normal flush — otherwise the row stays at "success / 0 output / TTFT 0".
+  const streamDetailId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
   const streamController = createStreamController({
     onDisconnect: (reason) => {
       trackPendingRequest(model, provider, connectionId, false);
       if (onDisconnect) onDisconnect(reason);
     },
-    onError: () => trackPendingRequest(model, provider, connectionId, false),
+    onError: (error) => {
+      trackPendingRequest(model, provider, connectionId, false);
+      saveRequestDetail(buildRequestDetail({
+        provider, model, connectionId,
+        timestamp: new Date().toISOString(),
+        latency: { ttft: 0, total: Date.now() - requestStartTime },
+        tokens: { prompt_tokens: 0, completion_tokens: 0 },
+        request: extractRequestConfig(body, stream),
+        providerRequest: translatedBody || null,
+        providerResponse: `[Stream error: ${error?.message || "unknown"}]`,
+        response: { content: "[Stream error]", thinking: null, type: "error" },
+        pxpipe: pxpipeSummary,
+        status: "error"
+      }, { id: streamDetailId })).catch(() => {});
+    },
     log, provider, model, reqTag
   });
 
@@ -406,8 +425,9 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     return result;
   }
 
-  // Streaming response
-  const { onStreamComplete, streamDetailId } = buildOnStreamComplete({ ...sharedCtx });
+  // Streaming response — reuse the streamDetailId generated earlier so onError
+  // and onStreamComplete update the same request-detail row.
+  const { onStreamComplete } = buildOnStreamComplete({ ...sharedCtx, streamDetailId });
   return handleStreamingResponse({ ...sharedCtx, providerResponse, sourceFormat, targetFormat: providerResponseFormat, userAgent, reqLogger, toolNameMap, streamController, onStreamComplete, streamDetailId });
 }
 

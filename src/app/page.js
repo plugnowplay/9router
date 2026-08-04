@@ -1,6 +1,5 @@
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { getPublicApiKey } from "@/lib/localDb";
+import { getApiKeys } from "@/lib/localDb";
 import { Card, Badge } from "@/shared/components";
 import CopyableField from "./_copyableField";
 
@@ -11,18 +10,32 @@ export const metadata = {
 };
 
 export default async function RootPage() {
-  let key;
+  let key = null;
   try {
-    key = await getPublicApiKey();
+    const keys = await getApiKeys();
+    key = (Array.isArray(keys) && keys.length > 0) ? keys[0] : null;
   } catch {
     key = null;
   }
-  if (!key) redirect("/dashboard");
 
   const h = await headers();
   const host = h.get("x-forwarded-host") || h.get("host") || "";
   const proto = h.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
   const baseUrl = host ? `${proto}://${host}/v1` : `${process.env.NEXT_PUBLIC_BASE_URL || ""}/v1`;
+
+  if (!key) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <Card className="max-w-md w-full text-center">
+          <span className="material-symbols-outlined text-[40px] text-text-muted">key_off</span>
+          <h1 className="text-lg font-semibold mt-2">No API key</h1>
+          <p className="text-sm text-text-muted mt-1">
+            Create a key in the dashboard to see it here.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   const models = Array.isArray(key.modelWhitelist) ? key.modelWhitelist : [];
 
@@ -33,12 +46,6 @@ export default async function RootPage() {
           <h1 className="text-xl font-semibold">{key.name || "Shared API access"}</h1>
           <p className="text-sm text-text-muted mt-1">
             Use this base URL and key with any OpenAI-compatible client.
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-yellow-300 dark:border-yellow-800 bg-yellow-500/10 p-3">
-          <p className="text-sm text-yellow-700 dark:text-yellow-300">
-            This page shows a live API key. Anyone with this link can use it.
           </p>
         </div>
 

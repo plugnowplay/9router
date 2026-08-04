@@ -18,8 +18,6 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
   const [tokenQuota, setTokenQuota] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [modelsText, setModelsText] = useState("");
-  const [isPublic, setIsPublic] = useState(false);
-  const [toggling, setToggling] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -29,7 +27,6 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
     setTokenQuota(apiKey.tokenQuota == null ? "" : String(apiKey.tokenQuota));
     setExpiresAt(toLocalInput(apiKey.expiresAt));
     setModelsText(Array.isArray(apiKey.modelWhitelist) ? apiKey.modelWhitelist.join("\n") : "");
-    setIsPublic(apiKey.isPublic === true);
     setError("");
   }, [isOpen, apiKey]);
 
@@ -66,33 +63,6 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
       setSaving(false);
     }
   };
-
-  const handleTogglePublic = async () => {
-    setError("");
-    setToggling(true);
-    try {
-      const method = isPublic ? "DELETE" : "POST";
-      const res = await fetch("/api/keys/" + apiKey.id + "/share", { method });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || ("Failed to " + (isPublic ? "revoke" : "enable") + " public access"));
-        return;
-      }
-      setIsPublic(!isPublic);
-      if (onSaved) onSaved();
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setToggling(false);
-    }
-  };
-
-  const grouped = models.reduce((acc, m) => {
-    const provider = m.provider || "other";
-    if (!acc[provider]) acc[provider] = [];
-    acc[provider].push(m);
-    return acc;
-  }, {});
 
   return (
     <Modal isOpen={isOpen} title={"Settings - " + (apiKey.name || "API key")} onClose={onClose}>
@@ -134,29 +104,6 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
             placeholder={"glm/glm-5.2\ncc/claude-opus-4-7\nkr/claude-sonnet-4.5"}
             className="w-full min-h-32 rounded border border-border bg-surface p-2 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
-        </div>
-
-        <div className="flex flex-col gap-2 pt-3 border-t border-border">
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="text-sm font-medium">Public access</label>
-              <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                When on, this key is shown at the root URL ({typeof window !== "undefined" ? window.location.origin : "your domain"}).
-              </p>
-            </div>
-            <Button
-              variant={isPublic ? "danger" : "secondary"}
-              onClick={handleTogglePublic}
-              disabled={toggling}
-            >
-              {toggling ? "..." : isPublic ? "Revoke public" : "Make public"}
-            </Button>
-          </div>
-          {isPublic && (
-            <p className="text-xs text-green-600 dark:text-green-400">
-              This key is currently public at the root URL.
-            </p>
-          )}
         </div>
 
         {error && <p className="text-sm text-red-500">{error}</p>}
