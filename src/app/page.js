@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { getApiKeys, getApiKeyById } from "@/lib/localDb";
+import { getPublicApiKey } from "@/lib/localDb";
 import { Card, Badge } from "@/shared/components";
 import CopyableField from "./_copyableField";
 
@@ -9,19 +9,10 @@ export const metadata = {
   title: "API Access",
 };
 
-export default async function RootPage({ searchParams }) {
-  const params = await searchParams;
-  const keyId = params?.key;
-
+export default async function RootPage() {
   let key = null;
   try {
-    if (keyId) {
-      key = await getApiKeyById(keyId);
-    }
-    if (!key) {
-      const keys = await getApiKeys();
-      key = (Array.isArray(keys) && keys.length > 0) ? keys[0] : null;
-    }
+    key = await getPublicApiKey();
   } catch {
     key = null;
   }

@@ -21,6 +21,7 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [copiedShare, setCopiedShare] = useState(false);
+  const [toggling, setToggling] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !apiKey) return;
@@ -62,6 +63,25 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
       setError(e.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleShared = async () => {
+    setError("");
+    setToggling(true);
+    try {
+      const method = apiKey.isPublic ? "DELETE" : "POST";
+      const res = await fetch("/api/keys/" + apiKey.id + "/share", { method });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to toggle share");
+        return;
+      }
+      if (onSaved) onSaved();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setToggling(false);
     }
   };
 
@@ -108,23 +128,32 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
         </div>
 
         <div className="flex flex-col gap-2 pt-3 border-t border-border">
-          <label className="text-sm font-medium">Share URL</label>
-          <p className="text-xs text-text-muted">
-            {typeof window !== "undefined" ? `${window.location.origin}/?key=${apiKey.id}` : `your-domain/?key=${apiKey.id}`}
-          </p>
-          <Button
-            variant="secondary"
-            icon={copiedShare ? "check" : "content_copy"}
-            onClick={() => {
-              const url = `${window.location.origin}/?key=${apiKey.id}`;
-              navigator.clipboard.writeText(url).then(() => {
-                setCopiedShare(true);
-                setTimeout(() => setCopiedShare(false), 2000);
-              });
-            }}
-          >
-            {copiedShare ? "Copied" : "Copy share URL"}
-          </Button>
+          <label className="text-sm font-medium">Shared at root URL</label>
+          {apiKey.isPublic ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-green-600 dark:text-green-400 flex-1">
+                {typeof window !== "undefined" ? window.location.origin : "your-domain"}
+              </span>
+              <Button
+                variant="secondary"
+                icon={copiedShare ? "check" : "content_copy"}
+                onClick={() => {
+                  const url = window.location.origin;
+                  navigator.clipboard.writeText(url).then(() => {
+                    setCopiedShare(true);
+                    setTimeout(() => setCopiedShare(false), 2000);
+                  });
+                }}
+              />
+              <Button variant="danger" disabled={toggling} onClick={handleToggleShared}>
+                {toggling ? "..." : "Stop sharing"}
+              </Button>
+            </div>
+          ) : (
+            <Button variant="secondary" disabled={toggling} onClick={handleToggleShared}>
+              {toggling ? "..." : "Set as shared"}
+            </Button>
+          )}
         </div>
 
         {error && <p className="text-sm text-red-500">{error}</p>}
