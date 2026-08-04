@@ -1,4 +1,5 @@
 import { DefaultExecutor } from "./default.js";
+import { sanitizeRequestBody } from "../utils/contentFilters.js";
 
 /**
  * CodeBuddyIntlExecutor — talks to https://www.codebuddy.ai/v2/chat/completions
@@ -15,6 +16,7 @@ export class CodeBuddyIntlExecutor extends DefaultExecutor {
 
   transformRequest(model, body, stream, credentials) {
     const transformed = super.transformRequest(model, body, stream, credentials);
+    sanitizeRequestBody(transformed);
     transformed.stream = true;
 
     const eff = transformed.reasoning_effort;

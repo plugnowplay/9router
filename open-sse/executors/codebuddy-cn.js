@@ -1,4 +1,5 @@
 import { DefaultExecutor } from "./default.js";
+import { sanitizeRequestBody } from "../utils/contentFilters.js";
 
 /**
  * CodeBuddyExecutor — talks to https://copilot.tencent.com/v2/chat/completions
@@ -16,23 +17,17 @@ export class CodeBuddyExecutor extends DefaultExecutor {
 
   transformRequest(model, body, stream, credentials) {
     const transformed = super.transformRequest(model, body, stream, credentials);
+    // Strip CLI-detection patterns (billing headers, agent identity, MCP refs)
+    // before sending to CodeBuddy — its content filter 403s on these.
+    sanitizeRequestBody(transformed);
     transformed.stream = true;
 
-    // CodeBuddy only surfaces model reasoning when the request carries the CLI's
-    // OpenAI-style params: reasoning_effort + reasoning_summary:"auto". 9router's
-    // thinking pipeline sets reasoning_effort only when the client asks, and never
-    // sets reasoning_summary — so reasoning never shows. Mirror the CLI here.
     const eff = transformed.reasoning_effort;
     if (eff === "none" || eff === "off") {
-      delete transformed.reasoning_effort; // gateway has no "none" — just omit
+      delete transformed.reasoning_effort;
     } else if (eff) {
-      // Client explicitly asked for reasoning — mirror the CLI's reasoning_summary
-      // so CodeBuddy surfaces the model's reasoning.
       transformed.reasoning_summary = "auto";
     }
-    // No reasoning requested: leave both unset. Forcing reasoning_effort:"medium"
-    // + reasoning_summary on plain requests makes CodeBuddy trip its content
-    // filter and return an error (#2071).
     return transformed;
   }
 }
