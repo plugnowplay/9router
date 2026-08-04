@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input } from "@/shared/components";
 
-export default function CopyableField({ label, value, copyKey }) {
+export default function CopyableField({ label, value }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -15,18 +14,19 @@ export default function CopyableField({ label, value, copyKey }) {
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <label className="text-sm font-medium">{label}</label>
-      <div className="flex gap-2">
-        <Input value={value} readOnly className="flex-1 font-mono text-sm" />
-        <Button
-          variant="secondary"
-          icon={copied ? "check" : "content_copy"}
-          onClick={handleCopy}
-        >
-          {copied ? "Copied" : "Copy"}
-        </Button>
-      </div>
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-medium text-white/40 uppercase tracking-wide">{label}</label>
+      <button
+        onClick={handleCopy}
+        className="group flex items-center gap-3 w-full text-left rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.05] transition-all duration-150 px-4 py-3"
+      >
+        <span className="flex-1 min-w-0 truncate font-mono text-sm text-white/80">
+          {value}
+        </span>
+        <span className={`material-symbols-outlined text-[18px] shrink-0 transition-colors ${copied ? "text-emerald-400" : "text-white/30 group-hover:text-white/60"}`}>
+          {copied ? "check" : "content_copy"}
+        </span>
+      </button>
     </div>
   );
 }
