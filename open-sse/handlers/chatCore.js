@@ -14,6 +14,7 @@ import { handleBypassRequest } from "../utils/bypassHandler.js";
 import { trackPendingRequest, appendRequestLog, saveRequestDetail } from "@/lib/usageDb.js";
 import { getExecutor } from "../executors/index.js";
 import { supportsGrokCliReasoningEffort } from "../config/grokCli.js";
+import { estimateInputTokens } from "../utils/usageTracking.js";
 import { buildRequestDetail, extractRequestConfig } from "./chatCore/requestDetail.js";
 import { handleForcedSSEToJson } from "./chatCore/sseToJsonHandler.js";
 import { handleNonStreamingResponse } from "./chatCore/nonStreamingHandler.js";
@@ -263,7 +264,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
         provider, model, connectionId,
         timestamp: new Date().toISOString(),
         latency: { ttft: 0, total: Date.now() - requestStartTime },
-        tokens: { prompt_tokens: 0, completion_tokens: 0 },
+        tokens: { prompt_tokens: estimateInputTokens(body), completion_tokens: 0 },
         request: extractRequestConfig(body, stream),
         providerRequest: translatedBody || null,
         providerResponse: `[Stream error: ${error?.message || "unknown"}]`,

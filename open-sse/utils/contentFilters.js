@@ -8,6 +8,11 @@
  */
 
 const PUDIDIL_FILTERS = [
+  // PHASE 0: Strip agent-identity injection blocks — OpenCode/Codex inject
+  // large <agent-identity>...</agent-identity> blocks that trigger Tencent's
+  // content policy. Remove the entire block before anything else runs.
+  { id: "strip_agent_identity_block", pattern: "<agent-identity>[\\s\\S]*?</agent-identity>", replacement: "", isRegex: true },
+
   // PHASE 1: Broad regex rules FIRST — catch all variations before exact
   // strings can partially match and leave fragments behind.
 
