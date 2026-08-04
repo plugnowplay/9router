@@ -120,7 +120,7 @@ export async function handleChat(request, clientRawRequest = null) {
             const { tools, tool_choice, ...cleanBody } = clientRawRequest.body || {};
             cleanRawReq = { ...clientRawRequest, body: cleanBody };
           }
-          return handleSingleModelChat(b, m, cleanRawReq, request, apiKey);
+          return handleSingleModelChat(b, m, cleanRawReq, request, apiKey, modelStr);
         },
         log,
         comboName: modelStr,
@@ -149,7 +149,7 @@ export async function handleChat(request, clientRawRequest = null) {
 /**
  * Handle single model chat request
  */
-async function handleSingleModelChat(body, modelStr, clientRawRequest = null, request = null, apiKey = null) {
+async function handleSingleModelChat(body, modelStr, clientRawRequest = null, request = null, apiKey = null, comboName = null) {
   const modelInfo = await getModelInfo(modelStr);
 
   // If provider is null, this might be a combo name - check and handle
@@ -173,7 +173,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
               const { tools, tool_choice, ...cleanBody } = clientRawRequest.body || {};
               cleanRawReq = { ...clientRawRequest, body: cleanBody };
             }
-            return handleSingleModelChat(b, m, cleanRawReq, request, apiKey);
+            return handleSingleModelChat(b, m, cleanRawReq, request, apiKey, modelStr);
           },
           log,
           comboName: modelStr,
@@ -187,7 +187,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       return handleComboChat({
         body,
         models: comboModels,
-        handleSingleModel: (b, m) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey),
+      handleSingleModel: (b, m) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey, modelStr),
         log,
         comboName: modelStr,
         comboStrategy,
@@ -203,6 +203,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
   // Whitelist is enforced against the RESOLVED provider/model, but custom
   // provider nodes use an alias (e.g. "zend") that resolves to a node ID.
   // Check both forms so a whitelist saved with the alias still matches.
+  // Combo sub-models: if the combo name is in the whitelist, skip per-model check.
   if (apiKey) {
     const candidate = providerAlias && providerAlias !== provider
       ? `${providerAlias}/${model}`
@@ -210,6 +211,9 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
     let modelLimits = await checkKeyLimits({ apiKey, model: `${provider}/${model}` });
     if (!modelLimits.ok && candidate) {
       modelLimits = await checkKeyLimits({ apiKey, model: candidate });
+    }
+    if (!modelLimits.ok && comboName) {
+      modelLimits = await checkKeyLimits({ apiKey, model: comboName });
     }
     if (!modelLimits.ok) {
       log.warn("AUTH", `Key limit: ${modelLimits.error}`);

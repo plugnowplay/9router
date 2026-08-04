@@ -23,6 +23,7 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
   const [copiedShare, setCopiedShare] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [isShared, setIsShared] = useState(false);
+  const [usage, setUsage] = useState(null);
 
   useEffect(() => {
     if (!isOpen || !apiKey) return;
@@ -32,6 +33,11 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
     setModelsText(Array.isArray(apiKey.modelWhitelist) ? apiKey.modelWhitelist.join("\n") : "");
     setIsShared(apiKey.isPublic === true);
     setError("");
+    setUsage(null);
+    fetch("/api/keys/" + apiKey.id + "/usage")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setUsage(d); })
+      .catch(() => {});
   }, [isOpen, apiKey]);
 
   if (!apiKey) return null;
@@ -120,15 +126,48 @@ export default function KeySettingsModal({ isOpen, apiKey, onClose, onSaved }) {
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium">
             Allowed models
-            <span className="text-text-muted font-normal"> - one per line, empty means all models</span>
+            <span className="text-text-muted font-normal"> - one per line. Supports combos too. Empty = all models</span>
           </label>
           <textarea
             value={modelsText}
             onChange={(e) => setModelsText(e.target.value)}
-            placeholder={"glm/glm-5.2\ncc/claude-opus-4-7\nkr/claude-sonnet-4.5"}
+            placeholder={"glm/glm-5.2\ncc/claude-opus-4-7\nmy-combo"}
             className="w-full min-h-32 rounded border border-border bg-surface p-2 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
         </div>
+
+        {usage && usage.totals && (
+          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
+            <div>
+              <p className="text-xs text-text-muted">Requests</p>
+              <p className="text-sm font-medium">{usage.totals.requests.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-xs text-text-muted">Tokens used</p>
+              <p className="text-sm font-medium">{(usage.totals.totalTokens || 0).toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-xs text-text-muted">Prompt tokens</p>
+              <p className="text-sm font-medium">{(usage.totals.promptTokens || 0).toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-xs text-text-muted">Completion tokens</p>
+              <p className="text-sm font-medium">{(usage.totals.completionTokens || 0).toLocaleString()}</p>
+            </div>
+            {usage.totals.cost > 0 && (
+              <div>
+                <p className="text-xs text-text-muted">Cost</p>
+                <p className="text-sm font-medium">${usage.totals.cost.toFixed(4)}</p>
+              </div>
+            )}
+            {usage.totals.errors > 0 && (
+              <div>
+                <p className="text-xs text-text-muted">Errors</p>
+                <p className="text-sm font-medium text-red-500">{usage.totals.errors}</p>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex flex-col gap-2 pt-3 border-t border-border">
           <label className="text-sm font-medium">Shared at root URL</label>
