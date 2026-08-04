@@ -29,6 +29,9 @@ const PUBLIC_API_PATHS = [
   "/api/auth/oidc",
   "/api/version",
   "/api/settings/require-login",
+  // Public share links: the whole /api/* branch below is deny-by-default,
+  // so the share endpoint 401s unless it is listed here.
+  "/api/share",
 ];
 
 // Public top-level prefixes (LLM API endpoints with their own API key auth).

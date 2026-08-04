@@ -93,6 +93,13 @@ export function formatDoneLine({ usage, latency }) {
   return `DONE ${latency?.total ?? 0}ms${ttftStr} · ${inStr} · OUT ${outTok}`;
 }
 
+// App-side sink for per-API-key token accounting. Registered by the app
+// (src/sse/handlers/chat.js) so this engine module never imports app code.
+let apiKeyUsageSink = null;
+export function setApiKeyUsageSink(fn) {
+  apiKeyUsageSink = typeof fn === "function" ? fn : null;
+}
+
 export function saveUsageStats({ provider, model, tokens, connectionId, apiKey, endpoint, label = "USAGE", silent = false }) {
   if (!tokens || typeof tokens !== "object") return;
 
@@ -100,6 +107,15 @@ export function saveUsageStats({ provider, model, tokens, connectionId, apiKey, 
   const outTokens = tokens.output_tokens ?? tokens.completion_tokens ?? 0;
 
   if (inTokens === 0 && outTokens === 0) return;
+
+  // Fail-open: quota bookkeeping must never break or delay a response.
+  if (apiKeyUsageSink && apiKey) {
+    try {
+      apiKeyUsageSink(apiKey, inTokens + outTokens);
+    } catch {
+      /* ignore */
+    }
+  }
 
   if (!silent) {
     const time = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });

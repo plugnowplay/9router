@@ -9,6 +9,8 @@ import {
 } from "../services/auth.js";
 import { cacheClaudeHeaders } from "open-sse/utils/claudeHeaderCache.js";
 import { getSettings } from "@/lib/localDb";
+import { checkKeyLimits, recordKeyTokenUsage } from "../services/keyLimits.js";
+import { setApiKeyUsageSink } from "open-sse/handlers/chatCore/requestDetail.js";
 import { getModelInfo, getComboModels } from "../services/model.js";
 import { handleChatCore } from "open-sse/handlers/chatCore.js";
 import { DEFAULT_HEADROOM_URL } from "@/lib/headroom/detect";
@@ -22,6 +24,12 @@ import { detectFormatByEndpoint } from "open-sse/translator/formats.js";
 import * as log from "../utils/logger.js";
 import { updateProviderCredentials, checkAndRefreshToken } from "../services/tokenRefresh.js";
 import { getProjectIdForConnection } from "open-sse/services/projectId.js";
+
+// Route real token counts into per-key quota accounting. saveUsageStats is
+// the only place upstream token counts exist, and it already carries apiKey.
+setApiKeyUsageSink((apiKey, totalTokens) => {
+  recordKeyTokenUsage(apiKey, totalTokens);
+});
 
 /**
  * Handle chat completion request
@@ -73,6 +81,13 @@ export async function handleChat(request, clientRawRequest = null) {
     if (!valid) {
       log.warn("AUTH", "Invalid API key (requireApiKey=true)");
       return errorResponse(HTTP_STATUS.UNAUTHORIZED, "Invalid API key");
+    }
+    // Expiry / quota / rate limit. Model is null here: the whitelist is
+    // checked after resolution so an alias or combo cannot route around it.
+    const limits = await checkKeyLimits({ apiKey, model: null });
+    if (!limits.ok) {
+      log.warn("AUTH", `Key limit: ${limits.error}`);
+      return errorResponse(limits.status, limits.error);
     }
   }
 
@@ -184,6 +199,15 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
   }
 
   const { provider, model } = modelInfo;
+
+  // Whitelist is enforced against the RESOLVED provider/model.
+  if (apiKey) {
+    const modelLimits = await checkKeyLimits({ apiKey, model: `${provider}/${model}` });
+    if (!modelLimits.ok) {
+      log.warn("AUTH", `Key limit: ${modelLimits.error}`);
+      return errorResponse(modelLimits.status, modelLimits.error);
+    }
+  }
 
   // Routing shown in the unified "▶" line (client model → provider/model)
 

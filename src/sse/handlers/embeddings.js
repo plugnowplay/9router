@@ -6,6 +6,7 @@ import {
   isValidApiKey,
 } from "../services/auth.js";
 import { getSettings } from "@/lib/localDb";
+import { checkKeyLimits } from "../services/keyLimits.js";
 import { getModelInfo } from "../services/model.js";
 import { handleEmbeddingsCore } from "open-sse/handlers/embeddingsCore.js";
 import { errorResponse, unavailableResponse } from "open-sse/utils/error.js";
@@ -63,6 +64,12 @@ export async function handleEmbeddings(request) {
       log.warn("AUTH", "Invalid API key (requireApiKey=true)");
       return errorResponse(HTTP_STATUS.UNAUTHORIZED, "Invalid API key");
     }
+    // Per-key limits: expiry / quota / rate. Whitelist checked after resolution.
+    const limits = await checkKeyLimits({ apiKey, model: null });
+    if (!limits.ok) {
+      log.warn("AUTH", `Key limit: ${limits.error}`);
+      return errorResponse(limits.status, limits.error);
+    }
   }
 
   if (!modelStr) {
@@ -82,6 +89,15 @@ export async function handleEmbeddings(request) {
   }
 
   const { provider, model } = modelInfo;
+
+  // Whitelist enforced against resolved provider/model.
+  if (apiKey) {
+    const modelLimits = await checkKeyLimits({ apiKey, model: `${provider}/${model}` });
+    if (!modelLimits.ok) {
+      log.warn("AUTH", `Key limit: ${modelLimits.error}`);
+      return errorResponse(modelLimits.status, modelLimits.error);
+    }
+  }
 
   if (modelStr !== `${provider}/${model}`) {
     log.info("ROUTING", `${modelStr} → ${provider}/${model}`);

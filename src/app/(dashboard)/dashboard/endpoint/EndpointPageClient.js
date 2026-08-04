@@ -17,6 +17,7 @@ import EndpointRow from "./components/EndpointRow";
 import StatusAlert from "./components/StatusAlert";
 import Tooltip from "./components/Tooltip";
 import SecurityWarning from "./components/SecurityWarning";
+import KeySettingsModal from "./KeySettingsModal";
 export default function APIPageClient({ machineId }) {
   const [keys, setKeys] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +25,7 @@ export default function APIPageClient({ machineId }) {
   const [newKeyName, setNewKeyName] = useState("");
   const [createdKey, setCreatedKey] = useState(null);
   const [confirmState, setConfirmState] = useState(null);
+  const [settingsKey, setSettingsKey] = useState(null);
 
   const [requireApiKey, setRequireApiKey] = useState(false);
   const [requireLogin, setRequireLogin] = useState(true);
@@ -1049,6 +1051,13 @@ export default function APIPageClient({ machineId }) {
                     title={key.isActive ? "Pause key" : "Resume key"}
                   />
                   <button
+                    onClick={() => setSettingsKey(key)}
+                    className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded text-text-muted hover:text-primary opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
+                    title="Key settings"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">settings</span>
+                  </button>
+                  <button
                     onClick={() => handleDeleteKey(key.id)}
                     className="p-2 hover:bg-red-500/10 rounded text-red-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
                   >
@@ -1060,6 +1069,13 @@ export default function APIPageClient({ machineId }) {
           </div>
         )}
       </Card>
+
+      <KeySettingsModal
+        isOpen={!!settingsKey}
+        apiKey={settingsKey}
+        onClose={() => setSettingsKey(null)}
+        onSaved={fetchData}
+      />
 
       {/* Add Key Modal */}
       <Modal

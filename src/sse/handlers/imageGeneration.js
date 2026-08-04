@@ -6,6 +6,7 @@ import {
   isValidApiKey,
 } from "../services/auth.js";
 import { getSettings } from "@/lib/localDb";
+import { checkKeyLimits } from "../services/keyLimits.js";
 import { getModelInfo, getComboModels } from "../services/model.js";
 import { handleImageGenerationCore } from "open-sse/handlers/imageGenerationCore.js";
 import { errorResponse, unavailableResponse } from "open-sse/utils/error.js";
@@ -41,6 +42,11 @@ export async function handleImageGeneration(request) {
     if (!apiKey) return errorResponse(HTTP_STATUS.UNAUTHORIZED, "Missing API key");
     const valid = await isValidApiKey(apiKey);
     if (!valid) return errorResponse(HTTP_STATUS.UNAUTHORIZED, "Invalid API key");
+    const limits = await checkKeyLimits({ apiKey, model: null });
+    if (!limits.ok) {
+      log.warn("AUTH", `Key limit: ${limits.error}`);
+      return errorResponse(limits.status, limits.error);
+    }
   }
 
   if (!modelStr) return errorResponse(HTTP_STATUS.BAD_REQUEST, "Missing model");
@@ -72,6 +78,13 @@ async function handleSingleModelImage(body, modelStr, { wantsStream, binaryOutpu
   if (!modelInfo.provider) return errorResponse(HTTP_STATUS.BAD_REQUEST, "Invalid model format");
 
   const { provider, model } = modelInfo;
+  if (apiKey) {
+    const modelLimits = await checkKeyLimits({ apiKey, model: `${provider}/${model}` });
+    if (!modelLimits.ok) {
+      log.warn("AUTH", `Key limit: ${modelLimits.error}`);
+      return errorResponse(modelLimits.status, modelLimits.error);
+    }
+  }
 
   // noAuth providers — no credential needed
   if (NO_AUTH_PROVIDERS.has(provider)) {

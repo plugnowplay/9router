@@ -3,7 +3,7 @@
 // pre-change safety backup in migrate.js: when the stored version is lower,
 // one lightweight DB backup is taken before applying schema changes. Forgetting
 // to bump only skips that backup — it does NOT break the additive auto-sync.
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const PRAGMA_SQL = `
 PRAGMA journal_mode = WAL;
@@ -83,8 +83,21 @@ export const TABLES = {
       machineId: "TEXT",
       isActive: "INTEGER DEFAULT 1",
       createdAt: "TEXT NOT NULL",
+      rateLimitRpm: "INTEGER",
+      tokenQuota: "INTEGER",
+      tokenUsed: "INTEGER DEFAULT 0",
+      quotaResetAt: "TEXT",
+      modelWhitelist: "TEXT",
+      expiresAt: "TEXT",
+      // Plain TEXT, not "TEXT UNIQUE": SQLite ALTER TABLE ADD COLUMN rejects
+      // inline UNIQUE, which would break auto-sync on existing DBs.
+      // Uniqueness is enforced by idx_ak_share_token below.
+      shareToken: "TEXT",
     },
-    indexes: ["CREATE INDEX IF NOT EXISTS idx_ak_key ON apiKeys(key)"],
+    indexes: [
+      "CREATE INDEX IF NOT EXISTS idx_ak_key ON apiKeys(key)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_ak_share_token ON apiKeys(shareToken)",
+    ],
   },
   combos: {
     columns: {

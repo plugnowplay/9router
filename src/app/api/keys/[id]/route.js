@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { deleteApiKey, getApiKeyById, updateApiKey } from "@/lib/localDb";
+import { parseKeyLimitFields, stripShareToken } from "@/lib/keyLimitFields";
 
 // GET /api/keys/[id] - Get single key
 export async function GET(request, { params }) {
@@ -9,7 +10,7 @@ export async function GET(request, { params }) {
     if (!key) {
       return NextResponse.json({ error: "Key not found" }, { status: 404 });
     }
-    return NextResponse.json({ key });
+    return NextResponse.json({ key: stripShareToken(key) });
   } catch (error) {
     console.log("Error fetching key:", error);
     return NextResponse.json({ error: "Failed to fetch key" }, { status: 500 });
@@ -28,12 +29,18 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: "Key not found" }, { status: 404 });
     }
 
-    const updateData = {};
+    const { fields, errors } = parseKeyLimitFields(body);
+    if (errors.length) {
+      return NextResponse.json({ error: errors.join("; ") }, { status: 400 });
+    }
+
+    // Partial update: only fields explicitly present are written.
+    const updateData = { ...fields };
     if (isActive !== undefined) updateData.isActive = isActive;
 
     const updated = await updateApiKey(id, updateData);
 
-    return NextResponse.json({ key: updated });
+    return NextResponse.json({ key: stripShareToken(updated) });
   } catch (error) {
     console.log("Error updating key:", error);
     return NextResponse.json({ error: "Failed to update key" }, { status: 500 });

@@ -6,6 +6,7 @@ import {
   isValidApiKey,
 } from "../services/auth.js";
 import { getSettings, getCombos } from "@/lib/localDb";
+import { checkKeyLimits } from "../services/keyLimits.js";
 import { AI_PROVIDERS, resolveProviderId } from "@/shared/constants/providers.js";
 import { handleFetchCore } from "open-sse/handlers/fetch/index.js";
 import { errorResponse, unavailableResponse } from "open-sse/utils/error.js";
@@ -58,6 +59,11 @@ export async function handleFetch(request) {
     if (!valid) {
       log.warn("AUTH", "Invalid API key (requireApiKey=true)");
       return errorResponse(HTTP_STATUS.UNAUTHORIZED, "Invalid API key");
+    }
+    const limits = await checkKeyLimits({ apiKey, model: null });
+    if (!limits.ok) {
+      log.warn("AUTH", `Key limit: ${limits.error}`);
+      return errorResponse(limits.status, limits.error);
     }
   }
 

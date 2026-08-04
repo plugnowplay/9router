@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getApiKeys, createApiKey } from "@/lib/localDb";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
+import { parseKeyLimitFields, stripShareToken } from "@/lib/keyLimitFields";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const keys = await getApiKeys();
-    return NextResponse.json({ keys });
+    return NextResponse.json({ keys: keys.map(stripShareToken) });
   } catch (error) {
     console.log("Error fetching keys:", error);
     return NextResponse.json({ error: "Failed to fetch keys" }, { status: 500 });
@@ -25,15 +26,24 @@ export async function POST(request) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
+    const { fields, errors } = parseKeyLimitFields(body);
+    if (errors.length) {
+      return NextResponse.json({ error: errors.join("; ") }, { status: 400 });
+    }
+
     // Always get machineId from server
     const machineId = await getConsistentMachineId();
-    const apiKey = await createApiKey(name, machineId);
+    const apiKey = await createApiKey(name, machineId, fields);
 
     return NextResponse.json({
       key: apiKey.key,
       name: apiKey.name,
       id: apiKey.id,
       machineId: apiKey.machineId,
+      rateLimitRpm: apiKey.rateLimitRpm,
+      tokenQuota: apiKey.tokenQuota,
+      modelWhitelist: apiKey.modelWhitelist,
+      expiresAt: apiKey.expiresAt,
     }, { status: 201 });
   } catch (error) {
     console.log("Error creating key:", error);
