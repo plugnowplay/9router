@@ -185,6 +185,27 @@ describe("parseGrokCliBilling", () => {
     });
     expect(parsed.quotas["Monthly included"].remainingPercentage).toBeLessThanOrEqual(1);
   });
+
+  it("maps maxAmountPerMonth as onDemandCap alias for free accounts (500k cap)", () => {
+    // Free accounts expose the monthly cap under maxAmountPerMonth, not
+    // onDemandCap (which is 0). Without this alias the bar collapses to a
+    // synthetic 1/1 depleted row.
+    const parsed = parseGrokCliBilling({
+      config: {
+        maxAmountPerMonth: { val: 500000 },
+        onDemandCap: { val: 0 },
+        onDemandUsed: { val: 237365 },
+        billingPeriodStart: "2026-08-01T00:00:00+00:00",
+        billingPeriodEnd: "2026-09-01T00:00:00+00:00",
+      },
+    }, { subscriptionTier: "free" });
+    expect(parsed.quotas["On-demand"]).toMatchObject({
+      used: 237365,
+      total: 500000,
+    });
+    expect(parsed.quotas["On-demand"].remainingPercentage).toBeCloseTo(52.527, 1);
+    expect(parsed.exhausted).toBe(false);
+  });
 });
 
 function encodeVarint(value) {
@@ -309,23 +330,54 @@ describe("getUsageForProvider(grok-cli)", () => {
     expect(proxyAwareFetch.mock.calls).toHaveLength(2);
   });
 
-  it("returns depleted on-demand bar without blocking message when cap is zero", async () => {
+  it("returns depleted on-demand bar when cap is zero and gRPC also fails", async () => {
     proxyAwareFetch
       .mockResolvedValueOnce(jsonResponse(EXHAUSTED_BILLING))
-      .mockResolvedValueOnce(jsonResponse(USER_PROFILE));
+      .mockResolvedValueOnce(jsonResponse(USER_PROFILE))
+      .mockResolvedValueOnce(binaryResponse(Buffer.alloc(0), 500));
 
     const usage = await getUsageForProvider({
       provider: "grok-cli",
       accessToken: "test-token",
     });
 
-    // Dashboard hides QuotaTable when `message` is set — keep message empty
-    // so the 0% bar still renders for exhausted free/promo accounts.
+    // Synthetic 1/1 bar must still render (fail-open) when gRPC fallback fails.
     expect(usage.message).toBeUndefined();
     expect(usage.quotas["On-demand"].remainingPercentage).toBe(0);
     expect(usage.quotas["On-demand"].total).toBe(1);
-    // Exhausted free already has a quota bar — no gRPC fallback
-    expect(proxyAwareFetch.mock.calls).toHaveLength(2);
+  });
+
+  it("returns gRPC weekly pool when REST yields only synthetic 1/1 depleted bar (SuperGrok paid)", async () => {
+    const resetSeconds = 1784825940;
+    const resetNanos = 867850000;
+    const resetAt = new Date(
+      resetSeconds * 1000 + Math.round(resetNanos / 1_000_000),
+    ).toISOString();
+
+    // REST: exhausted billing (cap=0/used=0) + no subscription tier in user
+    // profile → parseGrokCliBilling produces synthetic 1/1 On-demand bar.
+    proxyAwareFetch
+      .mockResolvedValueOnce(jsonResponse(EXHAUSTED_BILLING))
+      .mockResolvedValueOnce(jsonResponse(USER_PROFILE))
+      .mockResolvedValueOnce(
+        binaryResponse(buildCreditsResponseBuffer(0.35, resetSeconds, resetNanos)),
+      );
+
+    const usage = await getUsageForProvider({
+      provider: "grok-cli",
+      accessToken: "test-token",
+    });
+
+    // Synthetic 1/1 bar is replaced by authoritative gRPC weekly pool.
+    expect(usage.message).toBeUndefined();
+    expect(usage.quotas["Weekly SuperGrok"]).toMatchObject({
+      used: 35,
+      total: 100,
+      remainingPercentage: 65,
+      resetAt,
+      unlimited: false,
+    });
+    expect(usage.quotas["On-demand"]).toBeUndefined();
   });
 
   it("falls back to GetGrokCreditsConfig gRPC when paid sub has no REST numeric quota", async () => {

@@ -167,8 +167,23 @@ export function parseGrokCliBilling(billing, user = null) {
     });
   }
 
-  // Primary: on-demand spending window (subscription / promo credits)
-  const onDemandCap = unwrapVal(config.onDemandCap ?? root.onDemandCap, NaN);
+  // Primary: on-demand spending window (subscription / promo credits).
+  // g2a billing.go:100 also accepts maxAmountPerMonth as alias for onDemandCap
+  // (free accounts expose the monthly cap here, not under onDemandCap).
+  // Prefer maxAmountPerMonth when onDemandCap is 0/missing — a zero cap means
+  // "no on-demand allotment" while maxAmountPerMonth carries the real cap.
+  const rawOnDemandCap = unwrapVal(config.onDemandCap ?? root.onDemandCap, NaN);
+  const maxAmountPerMonth = unwrapVal(
+    config.maxAmountPerMonth ?? root.maxAmountPerMonth ??
+    config.max_amount_per_month ?? root.max_amount_per_month,
+    NaN,
+  );
+  const onDemandCap =
+    Number.isFinite(rawOnDemandCap) && rawOnDemandCap > 0
+      ? rawOnDemandCap
+      : Number.isFinite(maxAmountPerMonth) && maxAmountPerMonth > 0
+        ? maxAmountPerMonth
+        : rawOnDemandCap;
   const onDemandUsed = unwrapVal(config.onDemandUsed ?? root.onDemandUsed, NaN);
   if (Number.isFinite(onDemandCap) && onDemandCap > 0) {
     const used = Number.isFinite(onDemandUsed) ? Math.max(0, onDemandUsed) : 0;
@@ -373,15 +388,36 @@ export async function getGrokCliUsage(accessToken, providerSpecificData = null, 
 
     const parsed = parseGrokCliBilling(billing, user);
 
-    if (!parsed.quotas || Object.keys(parsed.quotas).length === 0) {
-      // Paid SuperGrok often returns cap=0 over REST but exposes the shared
-      // weekly pool on GetGrokCreditsConfig — try that before giving up.
+    // SuperGrok paid accounts return cap=0 over REST but expose the weekly
+    // pool via GetGrokCreditsConfig gRPC. The synthetic 1/1 depleted bar only
+    // signals "no on-demand allotment" — the gRPC weekly pool is the real
+    // authority, so trigger fallback when REST yields only that synthetic row
+    // (not only when quotas is empty).
+    const hasOnlySyntheticDepleted =
+      parsed.exhausted === true &&
+      Object.keys(parsed.quotas).length === 1 &&
+      parsed.quotas["On-demand"]?.total === 1 &&
+      parsed.quotas["On-demand"]?.used === 1;
+
+    if (
+      !parsed.quotas ||
+      Object.keys(parsed.quotas).length === 0 ||
+      hasOnlySyntheticDepleted
+    ) {
       const grpc = await fetchGrokCliCreditsConfig(accessToken, proxyOptions);
       const grpcQuotas = quotasFromGrpcCredits(grpc);
       if (grpcQuotas) {
         return {
           plan: parsed.plan,
           quotas: grpcQuotas,
+        };
+      }
+      if (hasOnlySyntheticDepleted) {
+        // gRPC failed: keep the synthetic 1/1 bar so the dashboard still
+        // surfaces the depleted state (paid-sub fail-open semantics).
+        return {
+          plan: parsed.plan,
+          quotas: parsed.quotas,
         };
       }
       return {
