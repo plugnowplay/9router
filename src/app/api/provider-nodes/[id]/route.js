@@ -6,7 +6,7 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, prefix, apiType, baseUrl } = body;
+    const { name, prefix, apiType, baseUrl, contentFilter } = body;
     const node = await getProviderNodeById(id);
 
     if (!node) {
@@ -48,10 +48,18 @@ export async function PUT(request, { params }) {
       }
     }
 
+    // contentFilter only valid for openai-compatible nodes (sanitizeRequestBody
+    // traverses OpenAI-shape bodies; anthropic-compatible bodies are Claude-shaped
+    // at executor time and would miss body.system + Anthropic tool shape).
+    const normalizedContentFilter = node.type === "openai-compatible" && contentFilter === "codebuddy"
+      ? "codebuddy"
+      : undefined;
+
     const updates = {
       name: name.trim(),
       prefix: prefix.trim(),
       baseUrl: sanitizedBaseUrl,
+      contentFilter: normalizedContentFilter,
     };
 
     if (node.type === "openai-compatible") {
@@ -69,6 +77,7 @@ export async function PUT(request, { params }) {
           apiType: node.type === "openai-compatible" ? apiType : undefined,
           baseUrl: sanitizedBaseUrl,
           nodeName: updated.name,
+          contentFilter: normalizedContentFilter,
         }
       })
     )));

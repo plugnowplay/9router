@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import { Badge, Button, Input, Modal, Select } from "@/shared/components";
+import { Badge, Button, Input, Modal, Select, Toggle } from "@/shared/components";
 
 const VARIANT_CONFIG = {
   openai: {
@@ -41,6 +41,7 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
     prefix: "",
     ...(config.hasApiType ? { apiType: "chat" } : {}),
     baseUrl: config.defaultBaseUrl,
+    ...(config.hasApiType ? { codebuddyFilter: false } : {}),
   });
 
   const [formData, setFormData] = useState(initialFormData);
@@ -68,13 +69,14 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
       const res = await fetch("/api/provider-nodes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name,
-          prefix: formData.prefix,
-          ...(config.hasApiType ? { apiType: formData.apiType } : {}),
-          baseUrl: formData.baseUrl,
-          type: config.type,
-        }),
+      body: JSON.stringify({
+        name: formData.name,
+        prefix: formData.prefix,
+        ...(config.hasApiType ? { apiType: formData.apiType } : {}),
+        baseUrl: formData.baseUrl,
+        type: config.type,
+        ...(config.hasApiType && formData.codebuddyFilter ? { contentFilter: "codebuddy" } : {}),
+      }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -165,6 +167,14 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
           placeholder={config.defaultBaseUrl}
           hint={config.baseUrlHint}
         />
+        {config.hasApiType && (
+          <Toggle
+            checked={formData.codebuddyFilter}
+            onChange={(checked) => setFormData({ ...formData, codebuddyFilter: checked })}
+            label="CodeBuddy content filter"
+            description="Strip CLI-detection patterns from requests and detect upstream soft-blocks. Enable when this node points at a CodeBuddy (Tencent) upstream."
+          />
+        )}
         <Input
           label="API Key (for Check)"
           type="password"

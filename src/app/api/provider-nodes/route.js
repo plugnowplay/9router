@@ -57,6 +57,7 @@ export async function POST(request) {
         apiType,
         baseUrl: (baseUrl || OPENAI_COMPATIBLE_DEFAULTS.baseUrl).trim(),
         name: name.trim(),
+        contentFilter: body.contentFilter === "codebuddy" ? "codebuddy" : undefined,
       });
       return NextResponse.json({ node }, { status: 201 });
     }

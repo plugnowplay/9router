@@ -18,9 +18,29 @@ const SENSITIVE_BLOCK_PATTERNS = [
 // Providers known to soft-block this way (200 + block text as content).
 const CONTENT_BLOCK_PROVIDERS = new Set(["codebuddy-cn", "codebuddy-intl"]);
 
+// Dynamic registry: custom provider nodes (openai-compatible-*) that opted into
+// the CodeBuddy content filter at the node level. Registered at request time by
+// DefaultExecutor.transformRequest (which runs before response handlers), so
+// handler-side isContentBlockProvider() checks see the registration. IDs are
+// stable UUIDs; entries are harmless after node deletion (no request reuses
+// them). Module-level Set is acceptable — bounded by total opt-in nodes.
+const DYNAMIC_CONTENT_BLOCK_PROVIDERS = new Set();
+
+/** Register a custom provider node for content-block detection at runtime. */
+export function registerContentBlockProvider(provider) {
+  if (typeof provider === "string" && provider) {
+    DYNAMIC_CONTENT_BLOCK_PROVIDERS.add(provider);
+  }
+}
+
+/** Clear dynamic registrations (test isolation only). */
+export function clearContentBlockProviders() {
+  DYNAMIC_CONTENT_BLOCK_PROVIDERS.clear();
+}
+
 /** True when the provider needs content-block detection on 2xx responses. */
 export function isContentBlockProvider(provider) {
-  return typeof provider === "string" && CONTENT_BLOCK_PROVIDERS.has(provider);
+  return typeof provider === "string" && (CONTENT_BLOCK_PROVIDERS.has(provider) || DYNAMIC_CONTENT_BLOCK_PROVIDERS.has(provider));
 }
 
 /**

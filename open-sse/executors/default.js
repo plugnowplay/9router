@@ -7,6 +7,8 @@ import { getCachedClaudeHeaders } from "../utils/claudeHeaderCache.js";
 import { proxyAwareFetch } from "../utils/proxyFetch.js";
 import { injectReasoningContent } from "../utils/reasoningContentInjector.js";
 import { stripUnsupportedParams } from "../translator/concerns/paramSupport.js";
+import { sanitizeRequestBody } from "../utils/contentFilters.js";
+import { registerContentBlockProvider } from "../utils/contentBlock.js";
 
 // Auth header descriptors — derived from registry transport.auth, fallback to hardcoded defaults.
 const BEARER = { combined: true, header: "Authorization", scheme: "bearer" };
@@ -82,8 +84,21 @@ export class DefaultExecutor extends BaseExecutor {
     super(provider, PROVIDERS[provider] || PROVIDERS.openai);
   }
 
-  transformRequest(model, body) {
+  transformRequest(model, body, stream, credentials) {
     const transformed = this.applyJsonSchemaFallback(body);
+
+    // Custom openai-compatible node opted into CodeBuddy content filter:
+    // strip CLI-detection patterns from the body (pudidil filters) and register
+    // the provider for soft-block detection so 200 + sensitive-content-notice
+    // responses surface as errors (combo/account fallback moves on). Scoped to
+    // openai-compatible-* — sanitizeRequestBody traverses OpenAI-shape bodies;
+    // anthropic-compatible bodies are already Claude-shaped at this point (body.system
+    // + Anthropic tool shape {name,description,input_schema} would be missed).
+    const contentFilter = credentials?.providerSpecificData?.contentFilter;
+    if (contentFilter === "codebuddy" && this.provider?.startsWith?.("openai-compatible-")) {
+      sanitizeRequestBody(transformed);
+      registerContentBlockProvider(this.provider);
+    }
 
     if (transformed && typeof transformed === "object") {
       // quirk: some openai-compatible providers reject Anthropic's client_metadata field
