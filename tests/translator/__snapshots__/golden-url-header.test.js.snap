@@ -1497,8 +1497,8 @@ exports[`GOLDEN buildUrl (default executor providers) > codebuddy-cn → url (st
 
 exports[`GOLDEN buildUrl (default executor providers) > codebuddy-intl → url (stream + non-stream) 1`] = `
 {
-  "nonStream": "https://www.workbuddy.ai/v2/chat/completions",
-  "stream": "https://www.workbuddy.ai/v2/chat/completions",
+  "nonStream": "https://www.codebuddy.ai/v2/chat/completions",
+  "stream": "https://www.codebuddy.ai/v2/chat/completions",
 }
 `;
 

@@ -1,4 +1,4 @@
-// CodeBuddy international (workbuddy.ai) — mirrors codebuddy-cn registry shape,
+// CodeBuddy international (codebuddy.ai) — mirrors codebuddy-cn registry shape,
 // swapping the Tencent CN domain for the .ai endpoint set. All OAuth/plugin URLs
 // use the /v2/plugin prefix with platform=ide (CN uses platform=CLI).
 export default {
@@ -11,9 +11,9 @@ export default {
     name: "CodeBuddy",
     icon: "smart_toy",
     color: "#006EFF",
-    website: "https://www.workbuddy.ai",
+    website: "https://www.codebuddy.ai",
     notice: {
-      signupUrl: "https://www.workbuddy.ai",
+      signupUrl: "https://www.codebuddy.ai",
     },
   },
   category: "oauth",
@@ -21,14 +21,14 @@ export default {
   hasOAuth: true,
   transport: {
     // Chat gateway is OpenAI-compatible SSE (same /v2/chat/completions path as CN).
-    baseUrl: "https://www.workbuddy.ai/v2/chat/completions",
+    baseUrl: "https://www.codebuddy.ai/v2/chat/completions",
     forceStream: true,
     // CodeBuddy intl speaks the same unified OpenAI reasoning_effort shape as CN.
     thinkingFormat: "openai",
     headers: {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
       "X-Product": "SaaS",
-      "X-Domain": "www.workbuddy.ai",
+      "X-Domain": "www.codebuddy.ai",
       "x-requested-with": "XMLHttpRequest",
       "x-codebuddy-request": "1",
     },
@@ -41,7 +41,7 @@ export default {
     // the same nested Tencent billing payload (data.Response.Data.Accounts[]).
     // See services/usage/codebuddy-cn.js (shared by intl via providerId param).
     usage: {
-      url: "https://www.workbuddy.ai/v2/billing/meter/get-user-resource",
+      url: "https://www.codebuddy.ai/v2/billing/meter/get-user-resource",
     },
   },
   // Same model lineup exposed by the CN gateway — intl backend is the same catalog.
@@ -63,10 +63,10 @@ export default {
     { id: "deepseek-v3-2-volc", name: "DeepSeek-V3.2" },
   ],
   oauth: {
-    baseUrl: "https://www.workbuddy.ai",
-    stateUrl: "https://www.workbuddy.ai/v2/plugin/auth/state",
-    tokenUrl: "https://www.workbuddy.ai/v2/plugin/auth/token",
-    refreshUrl: "https://www.workbuddy.ai/v2/plugin/auth/token/refresh",
+    baseUrl: "https://www.codebuddy.ai",
+    stateUrl: "https://www.codebuddy.ai/v2/plugin/auth/state",
+    tokenUrl: "https://www.codebuddy.ai/v2/plugin/auth/token",
+    refreshUrl: "https://www.codebuddy.ai/v2/plugin/auth/token/refresh",
     userAgent: "IDE/2.63.2 CodeBuddy/2.63.2",
     platform: "ide",
     pollInterval: 5000,
