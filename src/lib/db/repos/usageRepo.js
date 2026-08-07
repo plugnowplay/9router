@@ -333,6 +333,25 @@ export async function getUsageHistory(filter = {}) {
   }));
 }
 
+export async function sumTokensByConnectionSince(connectionId, sinceIso) {
+  if (!connectionId || !sinceIso) return 0;
+  try {
+    const db = await getAdapter();
+    const row = db.get(
+      `SELECT COALESCE(SUM(promptTokens), 0) + COALESCE(SUM(completionTokens), 0) AS total
+       FROM usageHistory
+       WHERE connectionId = ?
+         AND timestamp >= ?
+         AND (status IS NULL OR status = '' OR status = 'ok')`,
+      [connectionId, sinceIso],
+    );
+    const total = Number(row?.total);
+    return Number.isFinite(total) && total > 0 ? total : 0;
+  } catch {
+    return 0;
+  }
+}
+
 function loadDaysInRange(adapter, maxDays) {
   if (maxDays == null) {
     return adapter.all(`SELECT dateKey, data FROM usageDaily`);
