@@ -8,13 +8,21 @@
 // open-sse/config/errorConfig.js PROVIDER_ERROR_RULES and are applied by
 // src/sse/services/auth.js markAccountUnavailable.
 
-import { getProviderConnections, updateProviderConnection } from "@/lib/db/index.js";
+import {
+  getProviderConnections,
+  updateProviderConnection,
+  sumTokensByConnectionSince,
+} from "@/lib/db/index.js";
 import { updateProviderCredentials } from "@/sse/services/tokenRefresh.js";
 import {
   shouldRefreshCredentials,
   refreshProviderCredentials,
 } from "open-sse/services/oauthCredentialManager.js";
-import { getGrokCliUsage } from "open-sse/services/usage/grok-cli.js";
+import {
+  getGrokCliUsage,
+  freeObservedSinceIso,
+  applyObservedFreeTokens,
+} from "open-sse/services/usage/grok-cli.js";
 
 export const GROK_CLI_MANAGER_CONFIG = {
   provider: "grok-cli",
@@ -91,7 +99,12 @@ async function quotaLoop() {
       if (!conn.accessToken) continue;
 
       try {
-        const result = await getGrokCliUsage(conn.accessToken, conn.providerSpecificData);
+        let result = await getGrokCliUsage(conn.accessToken, conn.providerSpecificData);
+        if (result?.quotas?.Free) {
+          const since = freeObservedSinceIso(result);
+          const observed = await sumTokensByConnectionSince(conn.id, since);
+          result = applyObservedFreeTokens(result, observed);
+        }
         if (isQuotaExhausted(result)) {
           await updateProviderConnection(conn.id, {
             isActive: false,

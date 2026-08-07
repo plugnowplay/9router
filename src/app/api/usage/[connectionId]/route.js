@@ -2,7 +2,12 @@
 import "open-sse/index.js";
 
 import { getProviderConnectionById, updateProviderConnection } from "@/lib/localDb";
+import { sumTokensByConnectionSince } from "@/lib/db/index.js";
 import { getUsageForProvider } from "open-sse/services/usage.js";
+import {
+  applyObservedFreeTokens,
+  freeObservedSinceIso,
+} from "open-sse/services/usage/grok-cli.js";
 import { getExecutor } from "open-sse/executors/index.js";
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { USAGE_APIKEY_PROVIDERS } from "@/shared/constants/providers";
@@ -179,6 +184,16 @@ export async function GET(request, { params }) {
         usage = await getUsageForProvider(connection, proxyOptions);
       } catch (retryError) {
         console.warn(`[Usage] ${connection.provider}: force refresh failed: ${retryError.message}`);
+      }
+    }
+
+    if (connection.provider === "grok-cli" && usage?.quotas?.Free) {
+      try {
+        const since = freeObservedSinceIso(usage);
+        const observed = await sumTokensByConnectionSince(connection.id, since);
+        usage = applyObservedFreeTokens(usage, observed);
+      } catch (obsErr) {
+        console.warn(`[Usage] grok-cli observed tokens: ${obsErr.message}`);
       }
     }
 
