@@ -6,7 +6,12 @@ vi.mock("../../open-sse/utils/proxyFetch.js", () => ({
 
 import { proxyAwareFetch } from "../../open-sse/utils/proxyFetch.js";
 import { getUsageForProvider } from "../../open-sse/services/usage.js";
-import { parseGrokCliBilling } from "../../open-sse/services/usage/grok-cli.js";
+import {
+  parseGrokCliBilling,
+  applyObservedFreeTokens,
+  freeObservedSinceIso,
+  FREE_MONTHLY_CAP,
+} from "../../open-sse/services/usage/grok-cli.js";
 import { USAGE_SUPPORTED_PROVIDERS } from "../../src/shared/constants/providers.js";
 import { PROVIDERS } from "../../open-sse/providers/index.js";
 import { parseQuotaData } from "../../src/app/(dashboard)/dashboard/usage/components/ProviderLimits/utils.js";
@@ -71,15 +76,14 @@ describe("grok-cli registry usage flag", () => {
 });
 
 describe("parseGrokCliBilling", () => {
-  it("maps on-demand cap/used + prepaid balance", () => {
+  it("maps free on-demand cap as Free bar + prepaid balance", () => {
     const parsed = parseGrokCliBilling(ACTIVE_BILLING, USER_PROFILE);
     expect(parsed.plan).toBe("Grok Code");
-    expect(parsed.quotas["On-demand"]).toMatchObject({
+    expect(parsed.quotas.Free).toMatchObject({
       used: 35,
       total: 100,
       remainingPercentage: 65,
     });
-    // Prepaid is remaining-balance style: 0 used of current pot
     expect(parsed.quotas.Prepaid).toMatchObject({
       used: 0,
       total: 12.5,
@@ -88,10 +92,30 @@ describe("parseGrokCliBilling", () => {
     expect(parsed.exhausted).toBe(false);
   });
 
-  it("marks depleted free/promo account as exhausted", () => {
+  it("maps paid on-demand cap as On-demand bar", () => {
+    const parsed = parseGrokCliBilling(ACTIVE_BILLING, {
+      ...USER_PROFILE,
+      subscriptionTier: "super_grok",
+    });
+    expect(parsed.quotas["On-demand"]).toMatchObject({
+      used: 35,
+      total: 100,
+      remainingPercentage: 65,
+    });
+    expect(parsed.quotas.Free).toBeUndefined();
+  });
+
+  it("shows Free 0/500k for zero-allotment free profile", () => {
     const parsed = parseGrokCliBilling(EXHAUSTED_BILLING, USER_PROFILE);
-    expect(parsed.quotas["On-demand"].remainingPercentage).toBe(0);
-    expect(parsed.exhausted).toBe(true);
+    expect(parsed.subscriptionAccess).toBe(false);
+    expect(parsed.quotas.Free).toMatchObject({
+      used: 0,
+      total: 500_000,
+      remainingPercentage: 100,
+      unlimited: false,
+    });
+    expect(parsed.quotas["On-demand"]).toBeUndefined();
+    expect(parsed.exhausted).toBe(false);
   });
 
   it("uses subscriptionTier for plan when present", () => {
@@ -186,10 +210,22 @@ describe("parseGrokCliBilling", () => {
     expect(parsed.quotas["Monthly included"].remainingPercentage).toBeLessThanOrEqual(1);
   });
 
-  it("maps maxAmountPerMonth as onDemandCap alias for free accounts (500k cap)", () => {
-    // Free accounts expose the monthly cap under maxAmountPerMonth, not
-    // onDemandCap (which is 0). Without this alias the bar collapses to a
-    // synthetic 1/1 depleted row.
+  it("applyObservedFreeTokens raises Free used from local traffic", () => {
+    const base = parseGrokCliBilling(EXHAUSTED_BILLING, USER_PROFILE);
+    expect(base.quotas.Free.used).toBe(0);
+    const next = applyObservedFreeTokens(
+      { plan: base.plan, quotas: base.quotas, periodEnd: base.periodEnd },
+      12_500,
+    );
+    expect(next.quotas.Free).toMatchObject({
+      used: 12_500,
+      total: FREE_MONTHLY_CAP,
+      remainingPercentage: expect.closeTo(97.5, 1),
+    });
+    expect(freeObservedSinceIso(next)).toMatch(/^\d{4}-\d{2}-\d{2}/);
+  });
+
+  it("maps maxAmountPerMonth as Free bar for free accounts (500k cap)", () => {
     const parsed = parseGrokCliBilling({
       config: {
         maxAmountPerMonth: { val: 500000 },
@@ -199,11 +235,12 @@ describe("parseGrokCliBilling", () => {
         billingPeriodEnd: "2026-09-01T00:00:00+00:00",
       },
     }, { subscriptionTier: "free" });
-    expect(parsed.quotas["On-demand"]).toMatchObject({
+    expect(parsed.quotas.Free).toMatchObject({
       used: 237365,
       total: 500000,
     });
-    expect(parsed.quotas["On-demand"].remainingPercentage).toBeCloseTo(52.527, 1);
+    expect(parsed.quotas.Free.remainingPercentage).toBeCloseTo(52.527, 1);
+    expect(parsed.quotas["On-demand"]).toBeUndefined();
     expect(parsed.exhausted).toBe(false);
   });
 });
@@ -290,7 +327,7 @@ describe("getUsageForProvider(grok-cli)", () => {
 
     expect(usage.message).toBeUndefined();
     expect(usage.plan).toBe("Grok Code");
-    expect(usage.quotas["On-demand"]).toMatchObject({
+    expect(usage.quotas.Free).toMatchObject({
       used: 35,
       total: 100,
       remainingPercentage: 65,
@@ -330,7 +367,7 @@ describe("getUsageForProvider(grok-cli)", () => {
     expect(proxyAwareFetch.mock.calls).toHaveLength(2);
   });
 
-  it("returns depleted on-demand bar when cap is zero and gRPC also fails", async () => {
+  it("returns Free 0/500k when zero-allotment free profile and gRPC fails", async () => {
     proxyAwareFetch
       .mockResolvedValueOnce(jsonResponse(EXHAUSTED_BILLING))
       .mockResolvedValueOnce(jsonResponse(USER_PROFILE))
@@ -341,21 +378,22 @@ describe("getUsageForProvider(grok-cli)", () => {
       accessToken: "test-token",
     });
 
-    // Synthetic 1/1 bar must still render (fail-open) when gRPC fallback fails.
     expect(usage.message).toBeUndefined();
-    expect(usage.quotas["On-demand"].remainingPercentage).toBe(0);
-    expect(usage.quotas["On-demand"].total).toBe(1);
+    expect(usage.quotas.Free).toMatchObject({
+      used: 0,
+      total: 500_000,
+      remainingPercentage: 100,
+    });
+    expect(usage.quotas["On-demand"]).toBeUndefined();
   });
 
-  it("returns gRPC weekly pool when REST yields only synthetic 1/1 depleted bar (SuperGrok paid)", async () => {
+  it("maps free gRPC usage ratio onto Free X/500k", async () => {
     const resetSeconds = 1784825940;
     const resetNanos = 867850000;
     const resetAt = new Date(
       resetSeconds * 1000 + Math.round(resetNanos / 1_000_000),
     ).toISOString();
 
-    // REST: exhausted billing (cap=0/used=0) + no subscription tier in user
-    // profile → parseGrokCliBilling produces synthetic 1/1 On-demand bar.
     proxyAwareFetch
       .mockResolvedValueOnce(jsonResponse(EXHAUSTED_BILLING))
       .mockResolvedValueOnce(jsonResponse(USER_PROFILE))
@@ -368,16 +406,15 @@ describe("getUsageForProvider(grok-cli)", () => {
       accessToken: "test-token",
     });
 
-    // Synthetic 1/1 bar is replaced by authoritative gRPC weekly pool.
     expect(usage.message).toBeUndefined();
-    expect(usage.quotas["Weekly SuperGrok"]).toMatchObject({
-      used: 35,
-      total: 100,
+    expect(usage.quotas.Free).toMatchObject({
+      used: 175_000,
+      total: 500_000,
       remainingPercentage: 65,
       resetAt,
       unlimited: false,
     });
-    expect(usage.quotas["On-demand"]).toBeUndefined();
+    expect(usage.quotas["Weekly SuperGrok"]).toBeUndefined();
   });
 
   it("falls back to GetGrokCreditsConfig gRPC when paid sub has no REST numeric quota", async () => {

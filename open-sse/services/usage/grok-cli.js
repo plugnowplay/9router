@@ -35,6 +35,9 @@ const USAGE = U("grok-cli");
 const BILLING_URL = USAGE.url || "https://cli-chat-proxy.grok.com/v1/billing?format=credits";
 const USER_URL = USAGE.userUrl || "https://cli-chat-proxy.grok.com/v1/user?include=subscription";
 
+export const FREE_MONTHLY_CAP = 500_000;
+const FREE_OBSERVED_FALLBACK_MS = 24 * 60 * 60 * 1000;
+
 // SuperGrok weekly pool.
 const GRPC_CREDITS_URL =
   "https://grok.com/grok_api_v2.GrokBuildBilling/GetGrokCreditsConfig";
@@ -187,26 +190,13 @@ export function parseGrokCliBilling(billing, user = null) {
   const onDemandUsed = unwrapVal(config.onDemandUsed ?? root.onDemandUsed, NaN);
   if (Number.isFinite(onDemandCap) && onDemandCap > 0) {
     const used = Number.isFinite(onDemandUsed) ? Math.max(0, onDemandUsed) : 0;
-    quotas["On-demand"] = makeQuota({
+    // Free accounts: show as Free X/500k (or whatever cap). Paid: On-demand.
+    const barName = subscriptionAccess ? "On-demand" : "Free";
+    quotas[barName] = makeQuota({
       used,
       total: onDemandCap,
       resetAt: periodEnd,
     });
-  } else if (
-    !subscriptionAccess &&
-    Number.isFinite(onDemandCap) &&
-    onDemandCap === 0 &&
-    Number.isFinite(onDemandUsed)
-  ) {
-    // Cap 0 is the exhausted free/promo state (chat returns 402 spending-limit).
-    // UI treats total===0 as unlimited, so use a synthetic 1/1 depleted row.
-    quotas["On-demand"] = {
-      used: 1,
-      total: 1,
-      remainingPercentage: 0,
-      resetAt: periodEnd,
-      unlimited: false,
-    };
   }
 
   // Prepaid top-up balance (remaining credits; no fixed allotment known)
@@ -278,6 +268,14 @@ export function parseGrokCliBilling(billing, user = null) {
     }
   }
 
+  if (!subscriptionAccess && Object.keys(quotas).length === 0) {
+    quotas.Free = makeQuota({
+      used: 0,
+      total: FREE_MONTHLY_CAP,
+      resetAt: periodEnd,
+    });
+  }
+
   // Exhausted when every finite quota bar is at 0% remaining
   const exhausted =
     Object.keys(quotas).length > 0 &&
@@ -326,25 +324,68 @@ export async function fetchGrokCliCreditsConfig(accessToken, proxyOptions = null
   }
 }
 
-function quotasFromGrpcCredits(decoded) {
+function quotasFromGrpcCredits(decoded, { subscriptionAccess = false } = {}) {
   if (!decoded || !Number.isFinite(decoded.percentUsed)) return null;
-  // Round for bar display (fixed32 ratio * 100 can be 34.999… for 0.35)
-  const used = Math.round(Math.max(0, Math.min(100, decoded.percentUsed)));
+  // Free coarse period (no usage field) → keep REST Free 0/500k, not a fake %.
+  if (!subscriptionAccess && decoded.usagePresent === false) return null;
+
+  if (subscriptionAccess) {
+    const used = Math.round(Math.max(0, Math.min(100, decoded.percentUsed)));
+    return {
+      "Weekly SuperGrok": makeQuota({
+        used,
+        total: 100,
+        resetAt: decoded.resetAt || null,
+      }),
+    };
+  }
+
+  // Free: map weekly/usage ratio onto 500k monthly-style bar.
+  const ratio = Math.max(0, Math.min(1, decoded.percentUsed / 100));
+  const used = Math.round(FREE_MONTHLY_CAP * ratio);
   return {
-    "Weekly SuperGrok": makeQuota({
+    Free: makeQuota({
       used,
-      total: 100,
+      total: FREE_MONTHLY_CAP,
       resetAt: decoded.resetAt || null,
     }),
   };
 }
 
-/**
- * @param {string} accessToken
- * @param {object|null} providerSpecificData
- * @param {object|null} proxyOptions
- */
-export async function getGrokCliUsage(accessToken, providerSpecificData = null, proxyOptions = null) {
+export function applyObservedFreeTokens(usage, observedTokens) {
+  if (!usage?.quotas?.Free || usage.quotas.Free.unlimited === true) return usage;
+  const observed = Math.max(0, Math.round(toFiniteNumber(observedTokens, 0)));
+  if (observed <= 0) return usage;
+
+  const free = usage.quotas.Free;
+  const total = free.total > 0 ? free.total : FREE_MONTHLY_CAP;
+  const used = Math.max(toFiniteNumber(free.used, 0), observed);
+  const nextFree = makeQuota({
+    used,
+    total,
+    resetAt: free.resetAt || null,
+  });
+  const quotas = { ...usage.quotas, Free: nextFree };
+  const exhausted =
+    Object.keys(quotas).length > 0 &&
+    Object.values(quotas).every(
+      (q) => q.unlimited !== true && (q.remainingPercentage ?? 100) <= 0,
+    );
+  return { ...usage, quotas, exhausted };
+}
+
+export function freeObservedSinceIso(usage) {
+  const resetAt = usage?.quotas?.Free?.resetAt || usage?.periodEnd || null;
+  if (resetAt) {
+    const endMs = new Date(resetAt).getTime();
+    if (Number.isFinite(endMs)) {
+      return new Date(endMs - 31 * 24 * 60 * 60 * 1000).toISOString();
+    }
+  }
+  return new Date(Date.now() - FREE_OBSERVED_FALLBACK_MS).toISOString();
+}
+
+export async function getGrokCliUsage(accessToken, providerSpecificData = null, proxyOptions = null, options = null) {
   if (!accessToken) {
     return { message: "Grok CLI access token not available." };
   }
@@ -387,38 +428,28 @@ export async function getGrokCliUsage(accessToken, providerSpecificData = null, 
     }
 
     const parsed = parseGrokCliBilling(billing, user);
+    const quotaKeys = Object.keys(parsed.quotas || {});
+    const onlyFreeBar =
+      quotaKeys.length === 1 &&
+      parsed.quotas.Free != null &&
+      !parsed.subscriptionAccess;
 
-    // SuperGrok paid accounts return cap=0 over REST but expose the weekly
-    // pool via GetGrokCreditsConfig gRPC. The synthetic 1/1 depleted bar only
-    // signals "no on-demand allotment" — the gRPC weekly pool is the real
-    // authority, so trigger fallback when REST yields only that synthetic row
-    // (not only when quotas is empty).
-    const hasOnlySyntheticDepleted =
-      parsed.exhausted === true &&
-      Object.keys(parsed.quotas).length === 1 &&
-      parsed.quotas["On-demand"]?.total === 1 &&
-      parsed.quotas["On-demand"]?.used === 1;
-
-    if (
-      !parsed.quotas ||
-      Object.keys(parsed.quotas).length === 0 ||
-      hasOnlySyntheticDepleted
-    ) {
+    if (quotaKeys.length === 0 || onlyFreeBar) {
       const grpc = await fetchGrokCliCreditsConfig(accessToken, proxyOptions);
-      const grpcQuotas = quotasFromGrpcCredits(grpc);
+      const grpcQuotas = quotasFromGrpcCredits(grpc, {
+        subscriptionAccess: parsed.subscriptionAccess,
+      });
       if (grpcQuotas) {
-        return {
-          plan: parsed.plan,
-          quotas: grpcQuotas,
-        };
+        return applyObservedFreeTokens(
+          { plan: parsed.plan, quotas: grpcQuotas, periodEnd: parsed.periodEnd },
+          options?.observedTokens,
+        );
       }
-      if (hasOnlySyntheticDepleted) {
-        // gRPC failed: keep the synthetic 1/1 bar so the dashboard still
-        // surfaces the depleted state (paid-sub fail-open semantics).
-        return {
-          plan: parsed.plan,
-          quotas: parsed.quotas,
-        };
+      if (onlyFreeBar) {
+        return applyObservedFreeTokens(
+          { plan: parsed.plan, quotas: parsed.quotas, periodEnd: parsed.periodEnd },
+          options?.observedTokens,
+        );
       }
       return {
         plan: parsed.plan,
@@ -429,13 +460,10 @@ export async function getGrokCliUsage(accessToken, providerSpecificData = null, 
       };
     }
 
-    // Dashboard hides QuotaTable whenever `message` is set, so only attach a
-    // message when there are no quota rows to render. Depleted accounts keep
-    // the 0% On-demand bar without a blocking message.
-    return {
-      plan: parsed.plan,
-      quotas: parsed.quotas,
-    };
+    return applyObservedFreeTokens(
+      { plan: parsed.plan, quotas: parsed.quotas, periodEnd: parsed.periodEnd },
+      options?.observedTokens,
+    );
   } catch (error) {
     return { message: `Grok CLI usage error: ${error.message}` };
   }
