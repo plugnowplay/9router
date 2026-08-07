@@ -137,10 +137,14 @@ function extractNestedMessage(field) {
 }
 
 function extractUsageRatio(field) {
-  if (!field) return 0; // proto3 omission = 0% used
-  if (field.wireType === WIRE_TYPE_FIXED32) return field.bytes.readFloatLE(0);
-  if (field.wireType === WIRE_TYPE_FIXED64) return field.bytes.readDoubleLE(0);
-  return null;
+  if (!field) return { present: false, ratio: null, invalid: false };
+  if (field.wireType === WIRE_TYPE_FIXED32) {
+    return { present: true, ratio: field.bytes.readFloatLE(0), invalid: false };
+  }
+  if (field.wireType === WIRE_TYPE_FIXED64) {
+    return { present: true, ratio: field.bytes.readDoubleLE(0), invalid: false };
+  }
+  return { present: false, ratio: null, invalid: true };
 }
 
 function extractResetAt(field) {
@@ -159,11 +163,7 @@ function extractResetAt(field) {
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
-/**
- * Decode GetGrokCreditsConfig response → `{ percentUsed: 0-100, resetAt }` or null.
- * @param {Buffer} buffer
- * @returns {{ percentUsed: number, resetAt: string|null } | null}
- */
+/** Decode GetGrokCreditsConfig → `{ percentUsed, resetAt, usagePresent }` or null. */
 export function decodeGrokCreditsFrame(buffer) {
   if (!buffer || !Buffer.isBuffer(buffer) || buffer.length === 0) return null;
 
@@ -178,12 +178,23 @@ export function decodeGrokCreditsFrame(buffer) {
     const creditsInfo = extractNestedMessage(topLevelFields.get(FIELD_CREDITS_INFO));
     if (!creditsInfo) return null;
 
-    const usageRatio = extractUsageRatio(creditsInfo.get(CREDITS_FIELD_USAGE_RATIO));
+    const {
+      present: usagePresent,
+      ratio: usageRatio,
+      invalid: usageInvalid,
+    } = extractUsageRatio(creditsInfo.get(CREDITS_FIELD_USAGE_RATIO));
+    const resetAt = extractResetAt(creditsInfo.get(CREDITS_FIELD_RESET_TIMESTAMP));
+
+    if (usageInvalid) return null;
+    if (!usagePresent) {
+      return { percentUsed: 0, resetAt, usagePresent: false };
+    }
     if (usageRatio === null || !Number.isFinite(usageRatio) || usageRatio < 0) return null;
 
     return {
       percentUsed: Math.min(100, usageRatio * 100),
-      resetAt: extractResetAt(creditsInfo.get(CREDITS_FIELD_RESET_TIMESTAMP)),
+      resetAt,
+      usagePresent: true,
     };
   } catch {
     return null;
