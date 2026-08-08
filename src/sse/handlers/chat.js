@@ -10,6 +10,7 @@ import {
 import { cacheClaudeHeaders } from "open-sse/utils/claudeHeaderCache.js";
 import { getSettings } from "@/lib/localDb";
 import { checkKeyLimits, recordKeyTokenUsage } from "../services/keyLimits.js";
+import { hasValidCliToken } from "../services/cliToken.js";
 import { setApiKeyUsageSink } from "open-sse/handlers/chatCore/requestDetail.js";
 import { getModelInfo, getComboModels } from "../services/model.js";
 import { handleChatCore } from "open-sse/handlers/chatCore.js";
@@ -62,17 +63,20 @@ export async function handleChat(request, clientRawRequest = null) {
 
   // Log API key (masked)
   const authHeader = request.headers.get("Authorization");
-  const apiKey = extractApiKey(request);
+  const isInternalCli = await hasValidCliToken(request);
+  const apiKey = isInternalCli ? null : extractApiKey(request);
   if (authHeader && apiKey) {
     const masked = log.maskKey(apiKey);
     log.debug("AUTH", `API Key: ${masked}`);
+  } else if (isInternalCli) {
+    log.debug("AUTH", "Internal CLI request (x-9r-cli-token)");
   } else {
     log.debug("AUTH", "No API key provided (local mode)");
   }
 
   // Enforce API key if enabled in settings
   const settings = await getSettings();
-  if (settings.requireApiKey) {
+  if (settings.requireApiKey && !isInternalCli) {
     if (!apiKey) {
       log.warn("AUTH", "Missing API key (requireApiKey=true)");
       return errorResponse(HTTP_STATUS.UNAUTHORIZED, "Missing API key");

@@ -4,6 +4,7 @@ import {
 } from "../services/auth.js";
 import { getSettings } from "@/lib/localDb";
 import { checkKeyLimits } from "../services/keyLimits.js";
+import { hasValidCliToken } from "../services/cliToken.js";
 import { getModelInfo } from "../services/model.js";
 import { handleSttCore } from "open-sse/handlers/sttCore.js";
 import { errorResponse, unavailableResponse } from "open-sse/utils/error.js";
@@ -30,7 +31,8 @@ export async function handleStt(request) {
   log.request("POST", `/v1/audio/transcriptions | ${modelStr}`);
 
   const settings = await getSettings();
-  if (settings.requireApiKey) {
+  const isInternalCli = await hasValidCliToken(request);
+  if (settings.requireApiKey && !isInternalCli) {
     const apiKey = extractApiKey(request);
     if (!apiKey) return errorResponse(HTTP_STATUS.UNAUTHORIZED, "Missing API key");
     const valid = await isValidApiKey(apiKey);
