@@ -43,7 +43,7 @@ describe("Grok CLI live models", () => {
   it("refreshes and retries through selected proxy", async () => {
     const fetchFn = vi.fn()
       .mockResolvedValueOnce(jsonResponse({ error: "expired" }, 401))
-      .mockResolvedValueOnce(jsonResponse({ data: [{ id: "grok-build" }] }));
+      .mockResolvedValueOnce(jsonResponse({ data: [{ id: "grok-4.5" }] }));
     const onCredentialsRefreshed = vi.fn();
     const proxyOptions = {
       connectionProxyEnabled: true,
@@ -60,7 +60,7 @@ describe("Grok CLI live models", () => {
 
     expect(result.models).toEqual([
       expect.objectContaining({
-        id: "grok-build",
+        id: "grok-4.5",
         contextLength: 500000,
         maxOutputTokens: 64000,
       }),
@@ -75,6 +75,6 @@ describe("Grok CLI live models", () => {
     expect(fetchFn).toHaveBeenCalledTimes(2);
     expect(fetchFn.mock.calls[0][2]).toBe(proxyOptions);
     expect(fetchFn.mock.calls[1][1].headers.Authorization).toBe("Bearer new-token");
-    expect(fetchFn.mock.calls[1][1].headers["x-grok-client-version"]).toBe("0.2.99");
+    expect(fetchFn.mock.calls[1][1].headers["x-grok-client-version"]).toBe("0.2.111");
   });
 });

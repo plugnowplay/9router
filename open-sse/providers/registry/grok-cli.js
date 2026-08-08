@@ -1,7 +1,7 @@
 /**
  * Grok CLI / Grok Build (cli-chat-proxy.grok.com)
  *
- * Source of truth: wire capture of official @xai-official/grok 0.2.99
+ * Source of truth: wire capture of official @xai-official/grok 0.2.111
  * talking to https://cli-chat-proxy.grok.com (OpenAI Responses API).
  *
  * Distinct from:
@@ -69,11 +69,11 @@ export default {
   models: [
     {
       id: GROK_CLI_MODEL,
-      name: "Grok Build",
+      name: "Grok 4.5",
       contextLength: 500000,
       maxOutputTokens: 64000,
     },
-    { id: "grok-4.5", name: "Grok 4.5" },
+    { id: "grok-build", name: "Grok Build", contextLength: 500000, maxOutputTokens: 64000 },
     { id: "grok-4.5-high", name: "Grok 4.5 (High)", upstreamModelId: "grok-4.5" },
     { id: "grok-4.5-medium", name: "Grok 4.5 (Medium)", upstreamModelId: "grok-4.5" },
     { id: "grok-4.5-low", name: "Grok 4.5 (Low)", upstreamModelId: "grok-4.5" },
