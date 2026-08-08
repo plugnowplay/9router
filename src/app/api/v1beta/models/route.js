@@ -1,4 +1,6 @@
 import { PROVIDER_MODELS } from "@/shared/constants/models";
+import { getValidApiKeyRecord } from "@/lib/localDb";
+import { extractApiKey } from "@/sse/services/auth.js";
 
 /**
  * Handle CORS preflight
@@ -17,7 +19,7 @@ export async function OPTIONS() {
  * GET /v1beta/models - Gemini compatible models list
  * Returns models in Gemini API format
  */
-export async function GET() {
+export async function GET(request) {
   try {
     const models = [];
     const seen = new Set();
@@ -34,9 +36,27 @@ export async function GET() {
         outputTokenLimit: 8192,
       });
     }
-    
+
+    let whitelist = null;
+    const apiKey = request ? extractApiKey(request) : null;
+    if (apiKey) {
+      try {
+        const record = await getValidApiKeyRecord(apiKey);
+        if (Array.isArray(record?.modelWhitelist) && record.modelWhitelist.length > 0) {
+          whitelist = new Set(record.modelWhitelist.map((m) => String(m).trim()).filter(Boolean));
+        }
+      } catch {
+        whitelist = null;
+      }
+    }
+    const isAllowed = (provider, modelId) => {
+      if (!whitelist) return true;
+      return whitelist.has(`${provider}/${modelId}`) || whitelist.has(modelId);
+    };
+
     for (const [provider, providerModels] of Object.entries(PROVIDER_MODELS)) {
       for (const model of providerModels) {
+        if (!isAllowed(provider, model.id)) continue;
         addModel({
           name: `models/${provider}/${model.id}`,
           displayName: model.name || model.id,

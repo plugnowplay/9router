@@ -5,8 +5,9 @@ import {
   isAnthropicCompatibleProvider,
   isOpenAICompatibleProvider,
 } from "@/shared/constants/providers";
-import { getProviderConnections, getCombos, getCustomModels, getModelAliases } from "@/lib/localDb";
+import { getProviderConnections, getCombos, getCustomModels, getModelAliases, getValidApiKeyRecord } from "@/lib/localDb";
 import { getDisabledModels } from "@/lib/disabledModelsDb";
+import { extractApiKey } from "@/sse/services/auth.js";
 import { resolveKiroModels } from "open-sse/services/kiroModels.js";
 import { resolveKimchiModels } from "open-sse/services/kimchiModels.js";
 import { resolveQoderModels } from "open-sse/services/qoderModels.js";
@@ -537,11 +538,31 @@ export async function OPTIONS() {
  * GET /v1/models - OpenAI compatible models list (LLM/chat models only by default).
  * For other capabilities use /v1/models/{kind} (image, tts, stt, embedding, image-to-text, web).
  */
+function applyKeyWhitelist(models, whitelist) {
+  if (!Array.isArray(whitelist) || whitelist.length === 0) return models;
+  const allow = new Set(whitelist.map((m) => String(m).trim()).filter(Boolean));
+  if (allow.size === 0) return models;
+  return models.filter((m) => m?.id && allow.has(m.id));
+}
+
+export async function filterModelsByApiKey(request, models) {
+  const apiKey = request ? extractApiKey(request) : null;
+  if (!apiKey) return models;
+  try {
+    const record = await getValidApiKeyRecord(apiKey);
+    if (!record?.modelWhitelist) return models;
+    return applyKeyWhitelist(models, record.modelWhitelist);
+  } catch {
+    return models;
+  }
+}
+
 export async function GET(request) {
   try {
     // Detect cross-instance recursive /models fetch (another 9router fetching our /models)
     const skipDynamicFetch = request?.headers?.get(INTERNAL_MODELS_FETCH_HEADER) === "1";
-    const data = await buildModelsList([LLM_KIND], { skipDynamicFetch });
+    let data = await buildModelsList([LLM_KIND], { skipDynamicFetch });
+    data = await filterModelsByApiKey(request, data);
     return Response.json({ object: "list", data }, {
       headers: { "Access-Control-Allow-Origin": "*" },
     });
