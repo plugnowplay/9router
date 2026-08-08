@@ -114,6 +114,22 @@ describe("checkKeyLimits", () => {
     const r = await checkKeyLimits({ apiKey: "sk-x", model: "anything/whatever" });
     expect(r.ok).toBe(true);
   });
+
+  it("accepts combo name as a whitelisted model id", async () => {
+    getValidApiKeyRecord.mockResolvedValue(
+      keyRecord({ modelWhitelist: ["my-combo"] }),
+    );
+    resetQuotaIfNeeded.mockResolvedValue(
+      keyRecord({ modelWhitelist: ["my-combo"] }),
+    );
+
+    const viaCombo = await checkKeyLimits({ apiKey: "sk-x", model: "my-combo" });
+    expect(viaCombo.ok).toBe(true);
+
+    const directMiss = await checkKeyLimits({ apiKey: "sk-x", model: "kr/claude-sonnet-4.5" });
+    expect(directMiss.ok).toBe(false);
+    expect(directMiss.status).toBe(403);
+  });
 });
 
 describe("recordKeyTokenUsage", () => {
